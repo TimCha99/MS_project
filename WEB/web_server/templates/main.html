@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MS-CMS | Professional Security Console</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <header class="main-header">
+            <div class="header-left">
+                <h2 style="margin:0; font-size:1.1rem; color:var(--accent); letter-spacing:2px;">MUSEUM SECURITY HUB</h2>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-modern btn-accent" onclick="window.open('/database', 'DB', 'width=1150,height=850')">DATABASE HUB</button>
+                <button class="btn-modern" onclick="alert('SLAM MAP 팝업을 호출합니다.')">MAP VIEW</button>
+                <button class="btn-modern" onclick="sendTestSMS()">MESSAGE TEST</button>
+                <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
+                <span style="font-size:0.85rem; color:var(--text-dim);">ADMIN: <strong style="color:white;">{{ session['user_name'] }}</strong></span>
+                <button class="btn-modern" style="border:none; color:var(--crit);" onclick="location.href='/logout'">LOGOUT</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="side-panel">
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Timeline</div>
+                    <div class="clock-display">
+                        <div id="clock-date" class="clock-date">2026. 04. 22</div>
+                        <div id="clock-time" class="clock-time">00:00:00</div>
+                    </div>
+                </article>
+
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Asset Operational Status</div>
+                    <div class="status-list">
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_01</span>
+                            <div style="text-align:right;">
+                                <span class="status-badge online">CONNECTED</span>
+                                <div style="font-size:0.8rem; color:var(--accent); font-weight:800; margin-top:4px;">92%</div>
+                            </div>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_02</span>
+                            <div style="text-align:right;">
+                                <span class="status-badge offline">DISCONNECTED</span>
+                                <div style="font-size:0.8rem; color:var(--text-dim); font-weight:800; margin-top:4px;">--%</div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="bento-card log-card">
+                    <div class="card-label">Real-time Event Logs</div>
+                    <div id="log-list" class="log-area">
+                        </div>
+                </article>
+            </aside>
+
+            <section class="video-section">
+                <div class="video-box">
+                    <span class="video-id">CH 01: EXTERNAL</span>
+                    <button class="rec-btn" onclick="saveFrame('CH1')">● REC</button>
+                    <img src="/video_feed">
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 02: GALLERY</span>
+                    <button class="rec-btn" onclick="saveFrame('CH2')">● REC</button>
+                    <img src="/video_feed">
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 03: TB01_OAKD</span>
+                    <button class="rec-btn" onclick="saveFrame('CH3')">● REC</button>
+                    <img src="/video_feed">
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 04: TB02_OAKD</span>
+                    <button class="rec-btn" onclick="saveFrame('CH4')">● REC</button>
+                    <img src="/video_feed">
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // 시계 업데이트: 연.월.일 시:분:초
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.getFullYear() + ". " + String(now.getMonth() + 1).padStart(2, '0') + ". " + String(now.getDate()).padStart(2, '0');
+            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
+            document.getElementById('clock-date').innerText = dateStr;
+            document.getElementById('clock-time').innerText = timeStr;
+        }
+        setInterval(updateClock, 1000);
+
+        // 스마트 로그 업데이트: ID 기반 정렬 및 자동 스크롤
+        async function updateLogs() {
+            try {
+                const response = await fetch('/get_logs');
+                const logs = await response.json();
+                const logList = document.getElementById('log-list');
+
+                const isAtBottom = logList.scrollHeight - logList.scrollTop <= logList.clientHeight + 50;
+
+                logList.innerHTML = logs.map(log => {
+                    let color = "var(--info)";
+                    if(log.severity === 'WARN') color = "var(--warn)";
+                    if(log.severity === 'CRIT') color = "var(--crit)";
+                    
+                    return `<div style="color:${color}; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:4px;">
+                        <span style="color:#475569; font-size:0.65rem;">[ID:${String(log.id).padStart(4, '0')}]</span> 
+                        ${log.time.split(' ')[1]} | ${log.event}
+                    </div>`;
+                }).join('');
+
+                if (isAtBottom) logList.scrollTop = logList.scrollHeight;
+            } catch (e) { console.error("Log Fetch Error", e); }
+        }
+        setInterval(updateLogs, 2000);
+
+        function saveFrame(ch) { console.log(`Recording started for ${ch}...`); }
+        
+        function sendTestSMS() {
+            if(confirm("보안 테스트 알림을 발송하시겠습니까?")) {
+                fetch('/send_sms', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to_number: '01081843638', text: '[MS-CMS] 실시간 관제 시스템 정상 가동 중' })
+                }).then(r => r.json()).then(d => alert(d.success ? "발송 성공" : "실패"));
+            }
+        }
+
+        updateClock();
+        updateLogs();
+    </script>
+</body>
+</html>
