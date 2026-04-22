@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>🚨 SECURITY ALERT</title>
+
+<style>
+body {
+    margin:0;
+    background:#020617;
+    color:white;
+    font-family:sans-serif;
+}
+
+.container {
+    padding:20px;
+}
+
+.top {
+    display:flex;
+    gap:10px;
+}
+
+.cam {
+    flex:1;
+    background:black;
+    border-radius:12px;
+    overflow:hidden;
+}
+
+.cam img {
+    width:100%;
+    height:250px;
+    object-fit:contain;
+}
+
+.log-box {
+    margin-top:15px;
+    background:#0f172a;
+    padding:15px;
+    border-radius:12px;
+}
+
+.log-box p {
+    margin:5px 0;
+}
+
+.btns {
+    margin-top:15px;
+    display:flex;
+    gap:10px;
+}
+
+.btn {
+    flex:1;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.report {
+    background:#f87171;
+}
+
+.ignore {
+    background:#1e293b;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+    <!-- 카메라 -->
+    <div class="top">
+        <div class="cam">
+            <img src="/video_feed">
+        </div>
+        <div class="cam">
+            <img src="/turtle_feed">
+        </div>
+    </div>
+
+    <!-- 로그 -->
+    <div class="log-box">
+        <p>🚨 도난이 감지되었습니다.</p>
+        <p>전시품: GOLD_STATUE_01</p>
+        <p>위치: ZONE A</p>
+        <p>시간: <span id="time"></span></p>
+    </div>
+
+    <!-- 버튼 -->
+    <div class="btns">
+        <button class="btn report" onclick="report()">신고</button>
+        <button class="btn ignore" onclick="ignore()">무시</button>
+    </div>
+
+</div>
+
+<script>
+document.getElementById("time").innerText = new Date().toLocaleString();
+
+function report() {
+    alert("경찰 신고 요청됨 (추후 API 연결)");
+}
+
+function ignore() {
+    fetch('/clear_alert', {method:'POST'})
+    .then(()=>window.close());
+}
+
+function testAlert() {
+    fetch('/trigger_alert')
+        .then(res => res.json())
+        .then(data => {
+            console.log("Alert triggered");
+        });
+}
+</script>
+
+</body>
+</html>
