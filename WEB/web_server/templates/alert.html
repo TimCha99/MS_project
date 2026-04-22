@@ -85,11 +85,8 @@ body {
     </div>
 
     <!-- 로그 -->
-    <div class="log-box">
-        <p>🚨 도난이 감지되었습니다.</p>
-        <p>전시품: GOLD_STATUE_01</p>
-        <p>위치: ZONE A</p>
-        <p>시간: <span id="time"></span></p>
+    <div class="log-box" id="log-box">
+        <!-- 여기 JS로 채움 -->
     </div>
 
     <!-- 버튼 -->
@@ -101,10 +98,8 @@ body {
 </div>
 
 <script>
-document.getElementById("time").innerText = new Date().toLocaleString();
-
 function report() {
-    alert("경찰 신고 요청됨 (추후 API 연결)");
+    alert("🚨 경찰 신고 요청됨 (추후 API 연결)");
 }
 
 function ignore() {
@@ -112,13 +107,37 @@ function ignore() {
     .then(()=>window.close());
 }
 
-function testAlert() {
-    fetch('/trigger_alert')
-        .then(res => res.json())
-        .then(data => {
-            console.log("Alert triggered");
+async function loadAlert() {
+    const res = await fetch('/alert_status');
+    const data = await res.json();
+
+    console.log("alert data:", data);
+
+    const logBox = document.getElementById("log-box");
+
+    if (data.active && data.missing_items && data.missing_items.length > 0) {
+
+        let html = `<p>🚨 도난이 감지되었습니다.</p>`;
+        html += `<p>시간: ${new Date().toLocaleString()}</p><hr>`;
+
+        data.missing_items.forEach(item => {
+            html += `
+                <p><strong>ID:</strong> ${item.id}</p>
+                <p><strong>이름:</strong> ${item.name}</p>
+                <p><strong>위치:</strong> ${item.location}</p>
+                <hr>
+            `;
         });
+
+        logBox.innerHTML = html;
+
+    } else {
+        logBox.innerHTML = "<p>도난 정보 없음</p>";
+    }
 }
+
+// 실행
+loadAlert();
 </script>
 
 </body>

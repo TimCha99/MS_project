@@ -22,9 +22,11 @@
                 <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
                 <span style="font-size:0.85rem; color:var(--text-dim);">ADMIN: <strong style="color:white;">{{ session['user_name'] }}</strong></span>
                 <button class="btn-modern" style="border:none; color:var(--crit);" onclick="location.href='/logout'">LOGOUT</button>
+                <!--
                 <button class="btn-modern" onclick="testAlert()">ALERT TEST</button>
                 <button onclick="triggerTheft(942800)">1번 전시품 도난 테스트</button>
                 <button onclick="triggerTheft(2)">2번 전시품 도난 테스트</button>
+                -->
         </header>
 
         <main class="main-content">
@@ -58,38 +60,42 @@
                 </article>
 
                 <article class="bento-card log-card">
-                    <div class="card-label">Real-time Event Logs</div>
-                    <div id="log-list" class="log-area">
-                        </div>
+                    <div class="card-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Real-time Event Logs</span>
+                        <button class="btn-modern" style="padding: 2px 10px; font-size: 0.7rem; height: auto; border: 1px solid var(--border);" onclick="location.href='/download_logs'">Download</button>
+                    </div>
+                    
+                    <div id="log-list" class="log-area"></div>
                 </article>
             </aside>
 
             <section class="video-section">
                 <div class="video-box">
-                    <span class="video-id">CH 01: EXTERNAL</span>
-                    <button class="rec-btn" onclick="saveFrame('CH1')">● REC</button>
-                    <img src="/video_feed">
+                    <span class="video-id">CH 01: LOBBY</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH1', this)">● REC</button>
+                    <img src="/video/cam1">
                 </div>
                 <div class="video-box">
                     <span class="video-id">CH 02: GALLERY</span>
-                    <button class="rec-btn" onclick="saveFrame('CH2')">● REC</button>
-                    <img src="/video_feed">
+                    <button class="rec-btn" onclick="toggleRecord('CH2', this)">● REC</button>
+                    <img src="/video/cam2"> 
                 </div>
                 <div class="video-box">
                     <span class="video-id">CH 03: TB01_OAKD</span>
-                    <button class="rec-btn" onclick="saveFrame('CH3')">● REC</button>
-                    <img src="/video_feed">
+                    <button class="rec-btn" onclick="toggleRecord('CH3', this)">● REC</button>
+                    <img src="/video/robot8_cam1"> 
                 </div>
                 <div class="video-box">
                     <span class="video-id">CH 04: TB02_OAKD</span>
-                    <button class="rec-btn" onclick="saveFrame('CH4')">● REC</button>
-                    <img src="/video_feed">
+                    <button class="rec-btn" onclick="toggleRecord('CH4', this)">● REC</button>
+                    <img src="/video/robot8_cam2"> 
                 </div>
             </section>
         </main>
     </div>
 
     <script>
+        const recorders = {};
         // 시계 업데이트: 연.월.일 시:분:초
         function updateClock() {
             const now = new Date();
@@ -124,8 +130,96 @@
             } catch (e) { console.error("Log Fetch Error", e); }
         }
         setInterval(updateLogs, 2000);
-
-        function saveFrame(ch) { console.log(`Recording started for ${ch}...`); }
+        // 서버에 로그를 전송하는 보조 함수
+        async function postLogToServer(message, severity = 'INFO') {
+            try {
+                await fetch('/api/add_log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, severity: severity })
+                });
+                updateLogs(); // 로그창 즉시 갱신
+            } catch (e) { console.error("Log error:", e); }
+        }
+        // [주의] 이 함수 하나만 남기고 기존의 toggleRecord 함수 2개는 모두 지워주세요!
+        function toggleRecord(ch, btn) {
+            // 장소 이름 가져오기 (CH 01: LOBBY 등)
+            const locationName = btn.previousElementSibling.innerText;
+            // 1. 이미 녹화 중이라면? -> 중지 로직
+            if (recorders[ch] && recorders[ch].isRecording) {
+                recorders[ch].recorder.stop();
+                recorders[ch].isDrawing = false; 
+                recorders[ch].isRecording = false;
+                // 버튼 디자인 원상 복구
+                btn.innerText = '● REC';
+                btn.style.color = '';
+                btn.style.fontWeight = 'normal';
+                // 서버 로그 기록 (종료)
+                postLogToServer(`[${locationName}]의 녹화가 저장되었습니다!`);
+                return;
+            }
+            // 2. 녹화 시작 로직
+            const img = btn.nextElementSibling; // 버튼 바로 밑의 img 태그
+            
+            // 투명 도화지(Canvas) 생성
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 스트림 추출 및 레코더 설정
+            const stream = canvas.captureStream(30); 
+            const recorder = new MediaRecorder(stream, { 
+                mimeType: 'video/webm; codecs=vp8',
+                bitsPerSecond: 2500000 
+            });
+            const chunks = [];
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const now = new Date();
+                const timeStr = now.toISOString().replace(/T/, '_').replace(/:/g, '').split('.')[0];
+                // 팁: .mp4로 저장하고 싶으시면 아래를 .mp4로 바꾸셔도 됩니다!
+                a.download = `Record_${ch}_${timeStr}.webm`;
+                
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+            // 상태 저장
+            recorders[ch] = {
+                recorder: recorder,
+                isRecording: true,
+                isDrawing: true
+            };
+            // 버튼 상태 변경
+            btn.innerText = '■ STOP';
+            btn.style.color = '#ff4757';
+            btn.style.fontWeight = 'bold';
+            
+            // 캔버스 그리기 함수
+            function draw() {
+                if (!recorders[ch] || !recorders[ch].isDrawing) return;
+                if (img.complete && img.naturalWidth > 0) {
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+                requestAnimationFrame(draw);
+            }
+            // 서버 로그 기록 (시작)
+            postLogToServer(`[${locationName}]의 녹화를 시작합니다!`, 'WARN');
+            // 녹화 시작
+            recorder.start();
+            draw();
+        }
+        function startRecording() {
+            recorder.start();
+            console.log(`Recording started for ${ch}`);
+        }
         
         function sendTestSMS() {
             if(confirm("보안 테스트 알림을 발송하시겠습니까?")) {
@@ -136,7 +230,7 @@
                 }).then(r => r.json()).then(d => alert(d.success ? "발송 성공" : "실패"));
             }
         }
-
+        
         let alertWindow = null;
 
         async function checkAlert() {
@@ -166,28 +260,6 @@
             }
         }
         setInterval(checkAlert, 1000);
-        function testAlert() {
-            fetch('/trigger_alert')
-                .then(res => res.json())
-                .then(data => {
-                    console.log("trigger 됨:", data);
-                })
-                .catch(err => console.error(err));
-        }
-
-                function triggerTheft(artifact_id) {
-            fetch('/api/theft_detected', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ artifact_id: artifact_id })
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log(data);
-                alert(data.success ? "🚨 도난 감지 완료" : "실패: " + data.error);
-            })
-            .catch(err => console.error(err));
-        }
 
         updateClock();
         updateLogs();

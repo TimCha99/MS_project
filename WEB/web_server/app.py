@@ -11,6 +11,7 @@ import sqlite3
 from werkzeug.utils import secure_filename
 import csv
 from io import StringIO
+import threading
 
 # ==========================================
 # 1. 시스템 설정 및 초기화
@@ -24,33 +25,96 @@ app.secret_key = os.urandom(24)
 camera = cv2.VideoCapture(0, cv2.CAP_V4L2)
 
 UPLOAD_FOLDER = 'static/uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # [DB 경로 설정] 현재 파일 위치 기준으로 database 폴더 안의 db 파일 지정
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database/ms_database.db')
+# [수정] 다중 카메라 지원을 위한 글로벌 변수 및 락(Lock)
+# 이유: 여러 YOLO 노드가 동시에 접속할 때 데이터 충돌을 방지합니다.
+frames = {
+    # "cam1": {"data": None, "ts": 0},
+    # "cam2": {"data": None, "ts": 0}, ...
+}
+frame_lock = threading.Lock()
+# VALID_CAM_IDS에 터틀봇이 보내는 실제 이름을 추가하세요.
+VALID_CAM_IDS = {"cam1", "cam2", "robot8_cam1", "robot8_cam2"}
 
+#자동 보안 ON/OFF
+security_active = False
 #알림
 alert_state = {"active": False, "zone": None}
+#20시 되면 자동 보안 감지 시작, 6시 되면 자동으로 꺼짐
+def security_scheduler():
+    global security_active
+
+    while True:
+        now = datetime.datetime.now().time()
+
+        # 20:00 ~ 23:59 OR 00:00 ~ 06:00
+        if now >= datetime.time(18, 0) or now <= datetime.time(6, 0):
+            if not security_active:
+                print("🔒 자동 보안 ON")
+                security_active = True
+        else:
+            if security_active:
+                print("🔓 자동 보안 OFF")
+                security_active = False
+
+        time.sleep(10)  # 10초마다 체크
 
 # ==========================================
 # 2. 영상 스트리밍 엔진
 # ==========================================
-def generate_frames():
-    while True:
-        success, frame = camera.read()
-        if not success:
-            print("카메라를 읽을 수 없습니다.")
-            break
-        else:
-            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-            frame_bytes = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files.get('file')
+    cam_id = request.form.get('cam_id')
 
-@app.route('/video_feed')
-def video_feed():
-    """실시간 영상 스트리밍 파이프라인"""
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    if file is None or cam_id is None:
+        return jsonify({"status": "error"}), 400
+
+    frame_data = file.read()
+    
+    # [핵심] 수신 시점에 타임스탬프 기록
+    with frame_lock:
+        frames[cam_id] = {
+            "data": frame_data,
+            "ts": time.time()  # 데이터가 들어온 시각 기록
+        }
+
+    return jsonify({"status": "ok", "cam_id": cam_id})
+
+def generate_frames(cam_id):
+    last_sent_ts = 0  # 브라우저에 마지막으로 보낸 프레임의 시간
+    while True:
+        with frame_lock:
+            frame_obj = frames.get(cam_id)
+
+        # 1. 데이터가 아예 없거나, 이미 보낸 데이터와 같은 시점의 데이터면 대기
+        if frame_obj is None or frame_obj["ts"] <= last_sent_ts:
+            time.sleep(0.01)  # 아주 짧게 쉬면서 최신 데이터 대기
+            continue
+
+        # 2. 최신 데이터가 확인되면 송출
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_obj["data"] + b'\r\n')
+        
+        # 3. 보낸 시점 업데이트 및 강제 휴식 (브라우저 보호)
+        last_sent_ts = frame_obj["ts"]
+        
+        # [파라미터 설정] 
+        # YOLO가 10FPS로 보내면 0.08~0.09 정도로 설정하는 것이 가장 부드럽습니다.
+        time.sleep(0.08)
+
+@app.route('/video/<cam_id>')
+def video_feed(cam_id):
+    """HTML <img> 태그와 연결되는 스트리밍 라우트"""
+    if cam_id not in VALID_CAM_IDS:
+        return "Invalid cam_id", 400
+    return Response(generate_frames(cam_id), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 
 # ==========================================
@@ -115,11 +179,10 @@ def register_process():
 
     # 2. DB 저장
     try:
-        conn = sqlite3.connect(DB_PATH, timeout=10) # 10초 동안 대기 허용
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO admins (emp_id, password, username, phone) 
-            VALUES (?, ?, ?, ?)
+            INSERT INTO admins VALUES (?, ?, ?, ?)
         ''', (emp_id, password, name, phone))
         conn.commit()
         conn.close()
@@ -166,7 +229,7 @@ def send_sms():
     """문자 발송 로직 (Solapi API)"""
     req_data = request.get_json() or {}
     to_number = req_data.get('to_number', '01081843638').replace('-', '')
-    text = req_data.get('text', '종진아 화이팅')
+    text = req_data.get('text', '관제 시스템 테스트')
     
     from_number = '01081843638' 
     api_key = 'NCS8OH3DQ6JGTFRN' 
@@ -233,6 +296,29 @@ def get_logs():
         return jsonify(logs)
     except Exception as e:
         return jsonify({"error": str(e)})
+    
+@app.route('/download_logs')
+def download_logs():
+    """DB에 저장된 모든 로그를 CSV 파일로 변환하여 다운로드"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # 최신 로그부터 과거 로그까지 모두 가져옵니다.
+    cursor.execute('SELECT id, event, timestamp, severity FROM logs ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+
+    si = StringIO()
+    cw = csv.writer(si)
+    # CSV의 첫 번째 줄(헤더) 작성
+    cw.writerow(['Log ID', 'Event Description', 'Timestamp', 'Severity'])
+    # 데이터 행 작성
+    cw.writerows(rows)
+
+    output = make_response(si.getvalue())
+    # 다운로드되는 파일 이름 지정
+    output.headers["Content-Disposition"] = "attachment; filename=security_event_logs.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
 
 @app.route('/db_register', methods=['POST'])
 def db_register():
@@ -339,7 +425,7 @@ def toggle_status():
     art_id = data.get('art_id')
     admin_name = session.get('user_name', '관리자')
 
-    try:
+    try:        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
@@ -361,6 +447,121 @@ def toggle_status():
         return jsonify({"success": False, "error": "ID 미발견"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+    
+# 웹캠으로 인식한 전시품 품목 업데이트
+@app.route('/api/update_detected', methods=['POST'])
+def update_detected():
+    global alert_state, security_active
+    data = request.get_json()
+    detected_list = data.get('items', [])  # ['A001', 'A002']
+
+    print("📥 받은 감지:", detected_list)
+    print("🔒 보안 상태:", security_active)
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # 기존 감지 데이터 삭제
+    cursor.execute('DELETE FROM detected_items')
+
+    # 새 데이터 삽입
+    for art_id in detected_list:
+        cursor.execute('INSERT INTO detected_items (art_id) VALUES (?)', (art_id,))
+    conn.commit()
+    conn.close()
+    
+    # 🔥 detected_items를 ID → 상세정보로 변환
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    if detected_list:
+        placeholders = ','.join(['?'] * len(detected_list))
+        cursor.execute(f'''
+            SELECT art_id, art_name, location
+            FROM items
+            WHERE art_id IN ({placeholders})
+        ''', detected_list)
+
+        alert_state["detected_items"] = [
+            {"id": row[0], "name": row[1], "location": row[2]}
+            for row in cursor.fetchall()
+        ]
+    else:
+        alert_state["detected_items"] = []
+
+    conn.close()
+
+    missing = check_missing_items()
+
+    if missing:
+        alert_state["active"] = True
+        alert_state["zone"] = "yolo"
+        alert_state["missing"] = missing
+
+        add_log(f"[YOLO] 도난 감지: {missing}", "CRIT")
+        # 🔥 도난 감지 되면 alert에 로그 띄우기
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+    else:
+        print("⛔ 보안 꺼짐 또는 이상 없음")
+
+        placeholders = ','.join(['?'] * len(missing))
+        cursor.execute(f'''
+            SELECT art_id, art_name, location 
+            FROM items 
+            WHERE art_id IN ({placeholders})
+        ''', missing)
+
+        alert_state["missing_items"] = [
+            {"id": row[0], "name": row[1], "location": row[2]}
+            for row in cursor.fetchall()
+        ]
+
+        conn.close()
+    print("📥 받은 데이터:", detected_list)
+    return jsonify({"success": True, "missing": missing})
+# 사라진 전시품이 있는지 확인하는 코드
+def check_missing_items():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # 전체 전시품
+    cursor.execute('SELECT art_id FROM items')
+    all_items = set([row[0] for row in cursor.fetchall()])
+
+    # 현재 감지된 전시품
+    cursor.execute('SELECT art_id FROM detected_items')
+    detected_items = set([row[0] for row in cursor.fetchall()])
+
+    conn.close()
+
+    # 사라진 전시품
+    missing = all_items - detected_items
+
+    return list(missing)
+
+# 경보 트리거
+@app.route('/api/check_theft')
+def check_theft():
+    missing = check_missing_items()
+    missing = check_missing_items()
+    print("🚨 missing:", missing)
+    if missing:
+        global alert_state
+        alert_state = {
+            "active": False,
+            "zone": None,
+            "detected_items": [],
+            "missing_items": []
+        }
+
+        add_log(f"도난 의심: {missing}", "CRIT")
+
+        return jsonify({
+            "alert": True,
+            "missing_items": missing
+        })
+
+    return jsonify({"alert": False})
 
 # 3. DB 데이터 내보내기 (CSV 다운로드)
 @app.route('/download_items')
@@ -374,12 +575,11 @@ def download_items():
     # CSV 생성
     si = StringIO()
     cw = csv.writer(si)
-    cw.writerow(['작품ID', '작품명', '위치', '가격', '상태']) # 헤더
+    cw.writerow(['ID', 'Name', 'Location', 'Price', 'Status']) # 헤더
     cw.writerows(rows)
     
     output = make_response(si.getvalue())
     output.headers["Content-Disposition"] = "attachment; filename=museum_items_db.csv"
-    output.headers["Content-type"] = "text/csv; charset=utf-8-sig" # 한글 깨짐 방지
     return output
 
 # ======================
@@ -388,7 +588,6 @@ def download_items():
 @app.route('/alert_popup')
 def alert_popup():
     return render_template('alert.html')
-
 
 # ======================
 # Alert 상태 API (이미 있음이면 수정만)
@@ -406,7 +605,7 @@ def clear_alert():
     alert_state["active"] = False
     alert_state["zone"] = None
     return jsonify({"status": "cleared"})
-
+'''
 #테스트용 버튼
 @app.route('/trigger_alert')
 def trigger_alert():
@@ -414,6 +613,7 @@ def trigger_alert():
     alert_state["active"] = True
     alert_state["zone"] = "zoneA"  # 테스트용
     return {"status": "triggered"}
+    '''
 #DB에서 도난 전시품 이름으로 찾기
 def get_artifact_by_name(artifact_id):
     conn = sqlite3.connect('database/ms_database.db')
@@ -429,6 +629,7 @@ def get_artifact_by_name(artifact_id):
     conn.close()
 
     return result
+'''
 #도난 됐을 때 예시 버튼(삭제)
 @app.route('/api/theft_detected', methods=['POST'])
 def theft_detected():
@@ -485,9 +686,12 @@ def theft_detected():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+        '''
 # ==========================================
 # 5. 서버 실행
 # ==========================================
 if __name__ == '__main__':
     #app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    if __name__ == '__main__':
+        threading.Thread(target=security_scheduler, daemon=True).start()
+        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
