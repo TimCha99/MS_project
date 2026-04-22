@@ -33,7 +33,8 @@ frames = {
     # "cam2": {"data": None, "ts": 0}, ...
 }
 frame_lock = threading.Lock()
-VALID_CAM_IDS = {"cam1", "cam2", "tb01", "tb02"}
+# VALID_CAM_IDS에 터틀봇이 보내는 실제 이름을 추가하세요.
+VALID_CAM_IDS = {"cam1", "cam2", "robot8_cam1", "robot8_cam2"}
 
 # 알림 상태
 alert_state = {"active": False, "zone": None}
@@ -274,6 +275,29 @@ def toggle_status():
         add_log(f"상태 변경: {art_id} -> {new_status}", "INFO")
     conn.close()
     return jsonify({"success": True})
+
+@app.route('/download_logs')
+def download_logs():
+    """DB에 저장된 모든 로그를 CSV 파일로 변환하여 다운로드"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # 최신 로그부터 과거 로그까지 모두 가져옵니다.
+    cursor.execute('SELECT id, event, timestamp, severity FROM logs ORDER BY id DESC')
+    rows = cursor.fetchall()
+    conn.close()
+
+    si = StringIO()
+    cw = csv.writer(si)
+    # CSV의 첫 번째 줄(헤더) 작성
+    cw.writerow(['Log ID', 'Event Description', 'Timestamp', 'Severity'])
+    # 데이터 행 작성
+    cw.writerows(rows)
+
+    output = make_response(si.getvalue())
+    # 다운로드되는 파일 이름 지정
+    output.headers["Content-Disposition"] = "attachment; filename=security_event_logs.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
 
 @app.route('/download_items')
 def download_items():

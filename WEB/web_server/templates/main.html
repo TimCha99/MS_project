@@ -58,15 +58,18 @@
                 </article>
 
                 <article class="bento-card log-card">
-                    <div class="card-label">Real-time Event Logs</div>
-                    <div id="log-list" class="log-area">
-                        </div>
+                    <div class="card-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Real-time Event Logs</span>
+                        <button class="btn-modern" style="padding: 2px 10px; font-size: 0.7rem; height: auto; border: 1px solid var(--border);" onclick="location.href='/download_logs'">Download</button>
+                    </div>
+                    
+                    <div id="log-list" class="log-area"></div>
                 </article>
             </aside>
 
             <section class="video-section">
                 <div class="video-box">
-                    <span class="video-id">CH 01: EXTERNAL</span>
+                    <span class="video-id">CH 01: LOBBY</span>
                     <button class="rec-btn" onclick="saveFrame('CH1')">● REC</button>
                     <img src="/video/cam1"> </div>
                 <div class="video-box">
@@ -76,11 +79,11 @@
                 <div class="video-box">
                     <span class="video-id">CH 03: TB01_OAKD</span>
                     <button class="rec-btn" onclick="saveFrame('CH3')">● REC</button>
-                    <img src="/video/tb01"> </div>
+                    <img src="/video/robot8_cam1"> </div>
                 <div class="video-box">
                     <span class="video-id">CH 04: TB02_OAKD</span>
                     <button class="rec-btn" onclick="saveFrame('CH4')">● REC</button>
-                    <img src="/video/tb02"> </div>
+                    <img src="/video/robot8_cam2"> </div>
             </section>
         </main>
     </div>
