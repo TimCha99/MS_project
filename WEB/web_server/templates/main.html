@@ -22,7 +22,9 @@
                 <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
                 <span style="font-size:0.85rem; color:var(--text-dim);">ADMIN: <strong style="color:white;">{{ session['user_name'] }}</strong></span>
                 <button class="btn-modern" style="border:none; color:var(--crit);" onclick="location.href='/logout'">LOGOUT</button>
-            </div>
+                <button class="btn-modern" onclick="testAlert()">ALERT TEST</button>
+                <button onclick="triggerTheft(942800)">1번 전시품 도난 테스트</button>
+                <button onclick="triggerTheft(2)">2번 전시품 도난 테스트</button>
         </header>
 
         <main class="main-content">
@@ -135,8 +137,62 @@
             }
         }
 
+        let alertWindow = null;
+
+        async function checkAlert() {
+            try {
+                const res = await fetch('/alert_status');
+                const data = await res.json();
+
+                console.log("alert 상태:", data);
+
+                if (data.active === true) {
+                    if (!alertWindow || alertWindow.closed) {
+                        const width = 600;
+                        const height = 400;
+
+                        const left = (window.screen.width / 2) - (width / 2);
+                        const top = (window.screen.height / 2) - (height / 2);
+
+                        alertWindow = window.open(
+                            '/alert_popup',
+                            'ALERT',
+                            `width=${width},height=${height},left=${left},top=${top}`
+                        );
+                    }
+                }
+            } catch (e) {
+                console.error("alert error:", e);
+            }
+        }
+        setInterval(checkAlert, 1000);
+        function testAlert() {
+            fetch('/trigger_alert')
+                .then(res => res.json())
+                .then(data => {
+                    console.log("trigger 됨:", data);
+                })
+                .catch(err => console.error(err));
+        }
+
+                function triggerTheft(artifact_id) {
+            fetch('/api/theft_detected', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ artifact_id: artifact_id })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log(data);
+                alert(data.success ? "🚨 도난 감지 완료" : "실패: " + data.error);
+            })
+            .catch(err => console.error(err));
+        }
+
         updateClock();
         updateLogs();
+
+              
     </script>
 </body>
 </html>

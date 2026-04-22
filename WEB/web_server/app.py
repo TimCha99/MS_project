@@ -29,6 +29,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # [DB 경로 설정] 현재 파일 위치 기준으로 database 폴더 안의 db 파일 지정
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database/ms_database.db')
 
+#알림
+alert_state = {"active": False, "zone": None}
 
 # ==========================================
 # 2. 영상 스트리밍 엔진
@@ -60,7 +62,7 @@ def index():
     return redirect(url_for('login_page'))
 
 @app.route('/login')
-def login_page():
+def login_page():        #로그인 페이지
     return render_template('login.html')
 
 @app.route('/main')
@@ -70,7 +72,7 @@ def main_page():
         return redirect(url_for('login_page'))
     return render_template('main.html')
 
-@app.route('/register')
+@app.route('/register') #관리자 등록
 def register_page():
     return render_template('register.html')
 
@@ -154,7 +156,7 @@ def login_process():
     else:
         return "<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>"
 
-@app.route('/logout')
+@app.route('/logout')   #관리자 로그아웃 시, 메인 페이지 접근 불가
 def logout():
     session.clear()
     return redirect(url_for('login_page'))
@@ -368,7 +370,7 @@ def download_items():
     cursor.execute('SELECT art_id, art_name, location, price, status FROM items')
     rows = cursor.fetchall()
     conn.close()
-
+ 
     # CSV 생성
     si = StringIO()
     cw = csv.writer(si)
@@ -380,8 +382,112 @@ def download_items():
     output.headers["Content-type"] = "text/csv; charset=utf-8-sig" # 한글 깨짐 방지
     return output
 
+# ======================
+# Alert 페이지
+# ======================
+@app.route('/alert_popup')
+def alert_popup():
+    return render_template('alert.html')
+
+
+# ======================
+# Alert 상태 API (이미 있음이면 수정만)
+# ======================
+@app.route('/alert_status')
+def alert_status():
+    return jsonify(alert_state)
+
+
+# ======================
+# Alert 초기화 (무시 버튼)
+# ======================
+@app.route('/clear_alert', methods=['POST'])
+def clear_alert():
+    alert_state["active"] = False
+    alert_state["zone"] = None
+    return jsonify({"status": "cleared"})
+
+#테스트용 버튼
+@app.route('/trigger_alert')
+def trigger_alert():
+    global alert_state
+    alert_state["active"] = True
+    alert_state["zone"] = "zoneA"  # 테스트용
+    return {"status": "triggered"}
+#DB에서 도난 전시품 이름으로 찾기
+def get_artifact_by_name(artifact_id):
+    conn = sqlite3.connect('database/ms_database.db')
+    cursor = conn.cursor()
+
+    cursor.execute("""
+            SELECT art_id, art_name, location, price, status, image_path
+            FROM items
+            WHERE art_id = ?
+        """, (artifact_id,))
+
+    result = cursor.fetchone()
+    conn.close()
+
+    return result
+#도난 됐을 때 예시 버튼(삭제)
+@app.route('/api/theft_detected', methods=['POST'])
+def theft_detected():
+    data = request.get_json()
+    artifact_id = data.get('artifact_id')  # ✔ ID 기준
+
+    admin_name = session.get('user_name', 'SYSTEM')
+
+    try:
+        conn = sqlite3.connect('database/ms_database.db')
+        cursor = conn.cursor()
+
+        # 1. 전시품 조회 (ID 기준)
+        cursor.execute("""
+            SELECT art_id, art_name, location, price, status, image_path
+            FROM items
+            WHERE art_id = ?
+        """, (artifact_id,))
+
+        item = cursor.fetchone()
+
+        if not item:
+            return jsonify({
+                "success": False,
+                "error": "해당 ID의 전시품이 없습니다."
+            })
+
+        _id, name, location, price, status, image_path = item
+
+        # 2. 이미 도난 상태면 중복 방지
+        if status == "abnormal":
+            return jsonify({
+                "success": True,
+                "message": "이미 도난 상태입니다."
+            })
+
+        # 3. 상태 변경 (도난 처리)
+        cursor.execute("""
+            UPDATE items
+            SET status = 'abnormal'
+            WHERE art_id = ?
+        """, (artifact_id,))
+
+        conn.commit()
+        conn.close()
+
+        # 4. 로그 기록
+        add_log(f"[도난 감지] {name} (ID:{artifact_id}, {location}) abnormal 전환", "CRIT")
+
+        return jsonify({
+            "success": True,
+            "message": f"{name} 도난 처리 완료"
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 # ==========================================
 # 5. 서버 실행
 # ==========================================
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    #app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
