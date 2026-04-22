@@ -1,11 +1,18 @@
+<<<<<<< HEAD
+=======
+absl-py==2.4.0
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 ackermann-msgs==2.0.2
 action-msgs==1.2.2
 action-tutorials-interfaces==0.20.9
 action-tutorials-py==0.20.9
 actionlib-msgs==4.9.1
 actuator-msgs==0.0.1
+<<<<<<< HEAD
 addict==2.4.0
 altgraph==0.17.5
+=======
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 ament-cmake-test==1.3.14
 ament-copyright==0.12.15
 ament-cppcheck==0.12.15
@@ -20,6 +27,7 @@ ament-uncrustify==0.12.15
 ament-xmllint==0.12.15
 angles==1.15.0
 annotated-types==0.7.0
+<<<<<<< HEAD
 anyio==4.12.1
 appdirs==1.4.4
 apriltag-msgs==2.0.1
@@ -38,6 +46,18 @@ bcrypt==3.2.0
 beautifulsoup4==4.10.0
 beniget==0.4.1
 bleach==6.3.0
+=======
+anyio==4.13.0
+appdirs==1.4.4
+apturl==0.5.2
+argcomplete==1.8.1
+astunparse==1.6.3
+attrs==21.2.0
+Babel==2.8.0
+bcrypt==3.2.0
+beautifulsoup4==4.10.0
+beniget==0.4.1
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 blinker==1.9.0
 bloom==0.13.0
 bond==4.1.4
@@ -45,6 +65,7 @@ breezy==3.2.1
 Brlapi==0.8.3
 Brotli==1.0.9
 builtin-interfaces==1.2.2
+<<<<<<< HEAD
 cartographer-ros-msgs==2.0.9002
 catkin-pkg==1.1.0
 catkin-pkg-modules==1.1.0
@@ -53,6 +74,15 @@ cffi==2.0.0
 chardet==4.0.0
 charset-normalizer==3.4.6
 click==8.3.0
+=======
+camera-calibration==3.0.9
+catkin-pkg==1.1.0
+catkin-pkg-modules==1.1.0
+cbor2==5.4.2
+certifi==2020.6.20
+chardet==4.0.0
+click==8.3.2
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 colcon-argcomplete==0.3.3
 colcon-bash==0.5.0
 colcon-cd==0.2.1
@@ -79,10 +109,15 @@ colcon-ros==0.5.0
 colcon-test-result==0.3.8
 colcon-zsh==0.5.0
 colorama==0.4.4
+<<<<<<< HEAD
 comm==0.2.3
 command-not-found==0.3
 composition-interfaces==1.2.2
 ConfigArgParse==1.7.5
+=======
+command-not-found==0.3
+composition-interfaces==1.2.2
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 configobj==5.0.6
 control-msgs==4.8.0
 controller-manager==2.53.1
@@ -90,6 +125,7 @@ controller-manager-msgs==2.53.1
 cov-core==1.15.0
 coverage==6.2
 cryptography==3.4.8
+<<<<<<< HEAD
 cupshelpers==1.0
 cv-bridge==3.2.1
 cycler==0.11.0
@@ -101,6 +137,21 @@ defer==1.0.6
 defusedxml==0.7.1
 demo-nodes-py==0.20.9
 Deprecated==1.2.13
+=======
+cuda-bindings==13.2.0
+cuda-pathfinder==1.5.2
+cuda-toolkit==13.0.2
+cupshelpers==1.0
+cv-bridge==3.2.1
+cycler==0.11.0
+dbus-python==1.2.18
+decorator==4.4.2
+defer==1.0.6
+demo-nodes-py==0.20.9
+Deprecated==1.2.13
+depthai-ros-driver==2.12.2
+depthai-ros-msgs==2.12.2
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 diagnostic-msgs==4.9.1
 diagnostic-updater==4.0.6
 distlib==0.3.4
@@ -111,9 +162,12 @@ domain-coordinator==0.10.0
 dulwich==0.20.31
 duplicity==0.8.21
 dwb-msgs==1.1.20
+<<<<<<< HEAD
 dynamixel-easy-sdk==4.0.3
 dynamixel-sdk==3.8.4
 dynamixel-sdk-custom-interfaces==3.8.4
+=======
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 empy==3.3.4
 example-interfaces==0.9.3
 examples-rclpy-executors==0.15.5
@@ -123,12 +177,17 @@ examples-rclpy-minimal-client==0.15.5
 examples-rclpy-minimal-publisher==0.15.5
 examples-rclpy-minimal-service==0.15.5
 examples-rclpy-minimal-subscriber==0.15.5
+<<<<<<< HEAD
 exceptiongroup==1.3.0
 executing==2.2.1
+=======
+exceptiongroup==1.3.1
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 explore-lite-msgs==1.0.0
 fastbencode==0.0.5
 fasteners==0.14.1
 fastimport==0.9.14
+<<<<<<< HEAD
 fastjsonschema==2.21.2
 flake8==4.0.1
 flake8-blind-except==0.2.1
@@ -156,6 +215,27 @@ gpg==1.16.0
 gps-msgs==2.1.2
 grid-map-msgs==2.0.1
 h11==0.16.0
+=======
+ffmpeg-image-transport-msgs==1.1.2
+filelock==3.25.2
+flake8==4.0.1
+Flask==3.1.3
+flatbuffers==25.12.19
+fonttools==4.29.1
+foxglove-msgs==3.2.5
+fs==2.4.12
+fsspec==2026.3.0
+future==0.18.2
+gast==0.7.0
+generate-parameter-library-py==0.7.1
+geometry-msgs==4.9.1
+google-pasta==0.2.0
+gpg==1.16.0
+gps-msgs==2.1.2
+grpcio==1.80.0
+h11==0.16.0
+h5py==3.14.0
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 html5lib==1.1
 httpcore==1.0.9
 httplib2==0.20.2
@@ -165,6 +245,7 @@ image-geometry==3.2.1
 importlib-metadata==4.6.4
 iniconfig==1.1.1
 interactive-markers==2.3.2
+<<<<<<< HEAD
 ipykernel==7.2.0
 ipython==8.38.0
 ipywidgets==8.1.8
@@ -202,6 +283,23 @@ lark==1.3.1
 laser-geometry==2.4.1
 launch==1.0.14
 launch-param-builder==0.1.1
+=======
+irobot-create-common-bringup==2.1.0
+irobot-create-msgs==2.1.0
+itsdangerous==2.2.0
+jeepney==0.7.1
+Jinja2==3.1.6
+jiter==0.14.0
+joint-state-publisher==2.4.0
+keras==3.12.1
+keyring==23.5.0
+kiwisolver==1.3.2
+language-selector==0.1
+lap==0.5.13
+lark==1.1.1
+laser-geometry==2.4.1
+launch==1.0.14
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 launch-ros==0.19.13
 launch-testing==1.0.14
 launch-testing-ros==0.19.13
@@ -210,6 +308,10 @@ launch-yaml==1.0.14
 launchpadlib==1.10.16
 lazr.restfulclient==0.14.4
 lazr.uri==1.0.6
+<<<<<<< HEAD
+=======
+libclang==18.1.1
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 lifecycle-msgs==1.2.2
 lockfile==0.12.2
 logging-demo==0.20.9
@@ -219,6 +321,7 @@ lz4==3.1.3+dfsg
 macaroonbakery==1.3.1
 Mako==1.1.3
 map-msgs==2.1.0
+<<<<<<< HEAD
 MarkupSafe==3.0.2
 matplotlib==3.5.1
 matplotlib-inline==0.2.1
@@ -235,11 +338,27 @@ mpi4py==3.1.3
 mpmath==0.0.0
 my-first-package==0.0.0
 narwhals==2.18.1
+=======
+markdown-it-py==4.0.0
+MarkupSafe==3.0.3
+matplotlib==3.5.1
+mccabe==0.6.1
+mdurl==0.1.2
+mercurial==6.1.1
+message-filters==4.3.15
+ml_dtypes==0.5.4
+monotonic==1.6
+more-itertools==8.10.0
+mpi4py==3.1.3
+mpmath==1.3.0
+namex==0.1.0
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 nav-2d-msgs==1.1.20
 nav-msgs==4.9.1
 nav2-common==1.1.20
 nav2-msgs==1.1.20
 nav2-simple-commander==1.0.0
+<<<<<<< HEAD
 nbclient==0.10.4
 nbconvert==7.17.0
 nbformat==5.10.4
@@ -265,10 +384,42 @@ pandas==2.3.3
 pandocfilters==1.5.1
 paramiko==2.9.3
 parso==0.8.6
+=======
+netifaces==0.11.0
+networkx==3.4.2
+nose2==0.9.2
+notify2==0.3
+numpy==1.26.4
+nvidia-cublas==13.1.0.3
+nvidia-cuda-cupti==13.0.85
+nvidia-cuda-nvrtc==13.0.88
+nvidia-cuda-runtime==13.0.96
+nvidia-cudnn-cu13==9.19.0.56
+nvidia-cufft==12.0.0.61
+nvidia-cufile==1.15.1.6
+nvidia-curand==10.4.0.35
+nvidia-cusolver==12.0.4.66
+nvidia-cusparse==12.6.3.3
+nvidia-cusparselt-cu13==0.8.0
+nvidia-nccl-cu13==2.28.9
+nvidia-nvjitlink==13.0.88
+nvidia-nvshmem-cu13==3.4.5
+nvidia-nvtx==13.0.85
+oauthlib==3.2.0
+olefile==0.46
+openai==2.31.0
+opencv-python==4.9.0.80
+opt_einsum==3.4.0
+optree==0.19.0
+osrf-pycommon==2.1.6
+packaging==21.3
+paramiko==2.9.3
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 patiencediff==0.2.1
 pcl-msgs==1.0.0
 pendulum-msgs==0.20.9
 pexpect==4.8.0
+<<<<<<< HEAD
 pillow==12.1.1
 platformdirs==4.9.4
 plotly==6.6.0
@@ -285,6 +436,20 @@ py-pubsub==0.0.0
 pycairo==1.20.1
 pycodestyle==2.8.0
 pycparser==3.0
+=======
+Pillow==9.0.1
+pluggy==0.13.0
+ply==3.11
+polars==1.39.3
+polars-runtime-32==1.39.3
+protobuf==7.34.1
+psutil==5.9.0
+ptyprocess==0.7.0
+py==1.10.0
+pybind11==2.9.1
+pycairo==1.20.1
+pycodestyle==2.8.0
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 pycups==2.0.1
 pydantic==2.13.0
 pydantic_core==2.46.0
@@ -292,6 +457,7 @@ pydocstyle==6.1.1
 pydot==1.4.2
 pyflakes==2.4.0
 PyGithub==1.55
+<<<<<<< HEAD
 Pygments==2.11.2
 PyGObject==3.42.1
 pygraphviz==1.7
@@ -319,12 +485,32 @@ python-dateutil==2.9.0.post0
 python-debian==0.1.43+ubuntu1.1
 python-gitlab==2.10.1
 python-json-logger==4.0.0
+=======
+Pygments==2.20.0
+PyGObject==3.42.1
+PyJWT==2.3.0
+pymacaroons==0.13.0
+PyNaCl==1.5.0
+pyparsing==2.4.7
+PyQt5==5.15.6
+PyQt5-sip==12.9.1
+pyRFC3339==1.1
+pytest==6.2.5
+pytest-cov==3.0.0
+python-apt==2.4.0+ubuntu4.1
+python-dateutil==2.8.1
+python-debian==0.1.43+ubuntu1.1
+python-gitlab==2.10.1
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 python-qt-binding==1.1.3
 pythran==0.10.0
 pytz==2022.1
 pyxdg==0.27
 PyYAML==5.4.1
+<<<<<<< HEAD
 pyzmq==27.1.0
+=======
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 qt-dotgraph==2.2.4
 qt-gui==2.2.4
 qt-gui-cpp==2.2.4
@@ -334,6 +520,7 @@ rcl-interfaces==1.2.2
 rclpy==3.3.21
 rcutils==5.1.8
 realsense2-camera-msgs==4.57.7
+<<<<<<< HEAD
 referencing==0.37.0
 reportlab==3.6.8
 requests==2.32.5
@@ -343,6 +530,13 @@ retrying==1.4.2
 rfc3339-validator==0.1.4
 rfc3986-validator==0.1.1
 rfc3987-syntax==1.1.0
+=======
+reportlab==3.6.8
+requests==2.25.1
+requests-toolbelt==0.9.1
+resource-retriever==3.1.3
+rich==15.0.0
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 rmw-dds-common==1.6.0
 roman==3.3
 ros-gz-interfaces==0.244.23
@@ -351,7 +545,10 @@ ros2action==0.18.18
 ros2bag==0.15.16
 ros2cli==0.18.18
 ros2component==0.18.18
+<<<<<<< HEAD
 ros2controlcli==2.53.1
+=======
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 ros2doctor==0.18.18
 ros2interface==0.18.18
 ros2launch==0.19.13
@@ -364,8 +561,18 @@ ros2plugin==5.1.3
 ros2run==0.18.18
 ros2service==0.18.18
 ros2topic==0.18.18
+<<<<<<< HEAD
 rosbag2-interfaces==0.15.16
 rosbag2-py==0.15.16
+=======
+rosapi==2.0.5
+rosapi-msgs==2.0.5
+rosbag2-interfaces==0.15.16
+rosbag2-py==0.15.16
+rosbridge-library==2.0.5
+rosbridge-msgs==2.0.5
+rosbridge-server==2.0.5
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 rosdep==0.26.0
 rosdep-modules==0.26.0
 rosdistro==1.0.1
@@ -386,15 +593,21 @@ rosidl-typesupport-fastrtps-c==2.2.4
 rosidl-typesupport-fastrtps-cpp==2.2.4
 rosidl-typesupport-introspection-c==3.1.8
 rosidl-typesupport-introspection-cpp==3.1.8
+<<<<<<< HEAD
 rospkg==1.6.1
 rospkg-modules==1.6.1
 rpds-py==0.30.0
 rpyutils==0.2.2
 rqt==1.1.9
+=======
+rospkg-modules==1.6.1
+rpyutils==0.2.2
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 rqt-action==2.0.1
 rqt-bag==1.1.6
 rqt-bag-plugins==1.1.6
 rqt-console==2.0.3
+<<<<<<< HEAD
 rqt-controller-manager==2.53.1
 rqt-dotgraph==0.0.5
 rqt-gauges==0.0.3
@@ -403,12 +616,18 @@ rqt-gui==1.1.9
 rqt-gui-py==1.1.9
 rqt-joint-trajectory-controller==2.52.1
 rqt-moveit==1.0.1
+=======
+rqt-graph==1.3.2
+rqt-gui==1.1.9
+rqt-gui-py==1.1.9
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 rqt-msg==1.2.0
 rqt-plot==1.1.5
 rqt-publisher==1.5.0
 rqt-py-common==1.1.9
 rqt-py-console==1.0.2
 rqt-reconfigure==1.1.4
+<<<<<<< HEAD
 rqt-robot-dashboard==0.5.8
 rqt-robot-monitor==1.0.6
 rqt-robot-steering==1.0.3
@@ -425,6 +644,17 @@ scipy==1.8.0
 scripts==3.9.0
 SecretStorage==3.3.1
 Send2Trash==2.1.0
+=======
+rqt-robot-monitor==1.0.6
+rqt-service-caller==1.0.5
+rqt-shell==1.0.2
+rqt-srv==1.0.3
+rqt-topic==1.5.1
+scipy==1.8.0
+screen-resolution-extra==0.0.0
+SecretStorage==3.3.1
+semver==2.10.2
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 sensor-msgs==4.9.1
 sensor-msgs-py==4.9.1
 shape-msgs==4.9.1
@@ -434,20 +664,34 @@ smclib==4.1.4
 sniffio==1.3.1
 snowballstemmer==2.2.0
 soupsieve==2.3.1
+<<<<<<< HEAD
 srdfdom==2.0.7
 sros2==0.10.9
 ssh-import-id==5.11
 stack-data==0.6.3
+=======
+sros2==0.10.9
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 statistics-msgs==1.2.2
 std-msgs==4.9.1
 std-srvs==4.9.1
 stereo-msgs==4.9.1
+<<<<<<< HEAD
 sympy==1.9
 systemd-python==234
 teleop-twist-keyboard==2.4.1
 terminado==0.18.1
 terminator==2.1.1
 tf-transformations==1.1.1
+=======
+svgwrite==1.4.3
+sympy==1.14.0
+systemd-python==234
+teleop-twist-keyboard==2.4.1
+tensorflow==2.21.0
+termcolor==3.3.0
+terminator==2.1.1
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 tf2-geometry-msgs==0.25.20
 tf2-kdl==0.25.20
 tf2-msgs==0.25.20
@@ -456,6 +700,7 @@ tf2-ros-py==0.25.20
 tf2-sensor-msgs==0.25.20
 tf2-tools==0.25.20
 theora-image-transport==2.5.4
+<<<<<<< HEAD
 threadpoolctl==3.6.0
 tinycss2==1.4.0
 toml==0.10.2
@@ -478,24 +723,53 @@ turtlebot4-navigation==1.0.5
 -e /home/csg/turtlebot4_ws/build/turtlebot4_openai_tutorials
 # Editable install with no version control (turtlebot4-python-tutorials==1.0.1)
 -e /home/csg/turtlebot4_ws/build/turtlebot4_python_tutorials
+=======
+toml==0.10.2
+topic-monitor==0.20.9
+torch==2.11.0
+torchaudio==2.11.0
+torchvision==0.26.0
+tornado==6.1
+tqdm==4.67.3
+trajectory-msgs==4.9.1
+Tree==0.2.4
+triton==3.6.0
+turtlebot4-msgs==1.0.5
+turtlebot4-navigation==1.0.5
+turtlebot4-openai-tutorials==0.0.0
+turtlebot4-python-tutorials==1.0.1
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 turtlesim==1.4.3
 typeguard==2.2.2
 typing-inspection==0.4.2
 typing_extensions==4.15.0
+<<<<<<< HEAD
 tzdata==2025.3
+=======
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 ubuntu-drivers-common==0.0.0
 ubuntu-pro-client==8001
 ufoLib2==0.13.1
 ufw==0.36.1
+<<<<<<< HEAD
 unattended-upgrades==0.1
 unicodedata2==14.0.0
 unique-identifier-msgs==2.2.1
 urdfdom-py==1.2.1
 uri-template==1.3.0
+=======
+ujson==5.1.0
+ultralytics==8.4.37
+ultralytics-thop==2.0.18
+unattended-upgrades==0.1
+unicodedata2==14.0.0
+unique-identifier-msgs==2.2.1
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 urllib3==1.26.5
 usb-creator==0.3.7
 vcstool==0.3.0
 vcstools==0.1.42
+<<<<<<< HEAD
 velodyne-msgs==2.5.1
 vision-msgs==4.1.1
 visualization-msgs==4.9.1
@@ -506,6 +780,13 @@ webencodings==0.5.1
 websocket-client==1.9.0
 Werkzeug==3.1.3
 widgetsnbextension==4.0.15
+=======
+vision-msgs==4.1.1
+visualization-msgs==4.9.1
+wadllib==1.3.6
+webencodings==0.5.1
+Werkzeug==3.1.8
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 wrapt==1.13.3
 xacro==2.1.1
 xdg==5

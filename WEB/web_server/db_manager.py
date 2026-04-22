@@ -28,7 +28,11 @@ def init_db():
         )
     ''')
 
+<<<<<<< HEAD
     # 소장 중인 전시품목 
+=======
+    # [db_manager.py] 수정 부분
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS items (
         art_id TEXT PRIMARY KEY,      -- 6자리 숫자 ID
@@ -39,6 +43,7 @@ def init_db():
         image_path TEXT               -- [추가] 이미지 파일 경로
         )
     ''')
+<<<<<<< HEAD
 
     cursor.execute('''
     CREATE TABLE detected_items (
@@ -67,3 +72,12 @@ if __name__ == "__main__":
         )
     ''')
     """
+=======
+    
+    conn.commit()
+    conn.close()
+    print("데이터베이스 최적화 완료: admins 및 logs 테이블이 준비되었습니다.")
+
+if __name__ == "__main__":
+    init_db()
+>>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
