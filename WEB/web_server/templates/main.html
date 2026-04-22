@@ -70,26 +70,33 @@
             <section class="video-section">
                 <div class="video-box">
                     <span class="video-id">CH 01: LOBBY</span>
-                    <button class="rec-btn" onclick="saveFrame('CH1')">● REC</button>
-                    <img src="/video/cam1"> </div>
+                    <button class="rec-btn" onclick="toggleRecord('CH1', this)">● REC</button>
+                    <img src="/video/cam1"> 
+                </div>
                 <div class="video-box">
                     <span class="video-id">CH 02: GALLERY</span>
-                    <button class="rec-btn" onclick="saveFrame('CH2')">● REC</button>
-                    <img src="/video/cam2"> </div>
+                    <button class="rec-btn" onclick="toggleRecord('CH2', this)">● REC</button>
+                    <img src="/video/cam2"> 
+                </div>
                 <div class="video-box">
                     <span class="video-id">CH 03: TB01_OAKD</span>
-                    <button class="rec-btn" onclick="saveFrame('CH3')">● REC</button>
-                    <img src="/video/robot8_cam1"> </div>
+                    <button class="rec-btn" onclick="toggleRecord('CH3', this)">● REC</button>
+                    <img src="/video/robot8_cam1"> 
+                </div>
                 <div class="video-box">
                     <span class="video-id">CH 04: TB02_OAKD</span>
-                    <button class="rec-btn" onclick="saveFrame('CH4')">● REC</button>
-                    <img src="/video/robot8_cam2"> </div>
+                    <button class="rec-btn" onclick="toggleRecord('CH4', this)">● REC</button>
+                    <img src="/video/robot8_cam2"> 
+                </div>
             </section>
         </main>
     </div>
 
     <script>
         // 시계 업데이트: 연.월.일 시:분:초
+
+        const recorders = {};
+
         function updateClock() {
             const now = new Date();
             const dateStr = now.getFullYear() + ". " + String(now.getMonth() + 1).padStart(2, '0') + ". " + String(now.getDate()).padStart(2, '0');
@@ -124,8 +131,110 @@
         }
         setInterval(updateLogs, 2000);
 
-        function saveFrame(ch) { console.log(`Recording started for ${ch}...`); }
-        
+        // 서버에 로그를 전송하는 보조 함수
+        async function postLogToServer(message, severity = 'INFO') {
+            try {
+                await fetch('/api/add_log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, severity: severity })
+                });
+                updateLogs(); // 로그창 즉시 갱신
+            } catch (e) { console.error("Log error:", e); }
+        }
+
+        // [주의] 이 함수 하나만 남기고 기존의 toggleRecord 함수 2개는 모두 지워주세요!
+
+        function toggleRecord(ch, btn) {
+            // 장소 이름 가져오기 (CH 01: LOBBY 등)
+            const locationName = btn.previousElementSibling.innerText;
+
+            // 1. 이미 녹화 중이라면? -> 중지 로직
+            if (recorders[ch] && recorders[ch].isRecording) {
+                recorders[ch].recorder.stop();
+                recorders[ch].isDrawing = false; 
+                recorders[ch].isRecording = false;
+
+                // 버튼 디자인 원상 복구
+                btn.innerText = '● REC';
+                btn.style.color = '';
+                btn.style.fontWeight = 'normal';
+
+                // 서버 로그 기록 (종료)
+                postLogToServer(`[${locationName}]의 녹화가 저장되었습니다!`);
+                return;
+            }
+
+            // 2. 녹화 시작 로직
+            const img = btn.nextElementSibling; // 버튼 바로 밑의 img 태그
+            
+            // 투명 도화지(Canvas) 생성
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 스트림 추출 및 레코더 설정
+            const stream = canvas.captureStream(30); 
+            const recorder = new MediaRecorder(stream, { 
+                mimeType: 'video/webm; codecs=vp8',
+                bitsPerSecond: 2500000 
+            });
+            const chunks = [];
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const now = new Date();
+                const timeStr = now.toISOString().replace(/T/, '_').replace(/:/g, '').split('.')[0];
+                // 팁: .mp4로 저장하고 싶으시면 아래를 .mp4로 바꾸셔도 됩니다!
+                a.download = `Record_${ch}_${timeStr}.webm`;
+                
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            // 상태 저장
+            recorders[ch] = {
+                recorder: recorder,
+                isRecording: true,
+                isDrawing: true
+            };
+
+            // 버튼 상태 변경
+            btn.innerText = '■ STOP';
+            btn.style.color = '#ff4757';
+            btn.style.fontWeight = 'bold';
+            
+            // 캔버스 그리기 함수
+            function draw() {
+                if (!recorders[ch] || !recorders[ch].isDrawing) return;
+                if (img.complete && img.naturalWidth > 0) {
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+                requestAnimationFrame(draw);
+            }
+
+            // 서버 로그 기록 (시작)
+            postLogToServer(`[${locationName}]의 녹화를 시작합니다!`, 'WARN');
+
+            // 녹화 시작
+            recorder.start();
+            draw();
+        }
+
+        function startRecording() {
+            recorder.start();
+            console.log(`Recording started for ${ch}`);
+        }
+
         function sendTestSMS() {
             if(confirm("보안 테스트 알림을 발송하시겠습니까?")) {
                 fetch('/send_sms', { 

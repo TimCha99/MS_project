@@ -322,10 +322,21 @@ def clear_alert():
     alert_state["active"] = False
     return jsonify({"status": "cleared"})
 
+@app.route('/api/add_log', methods=['POST'])
+def api_add_log(): # 중복 방지를 위해 api_를 붙였습니다.
+    data = request.json
+    message = data.get('message')
+    severity = data.get('severity', 'INFO')
+    
+    # 내부적으로 이미 정의된 add_log 함수를 그대로 활용하면 코드가 더 깔끔합니다!
+    add_log(message, severity) 
+    
+    return jsonify({"success": True})
+
 # ==========================================
 # 5. 서버 실행 (최종 파라미터 적용)
 # ==========================================
 if __name__ == '__main__':
     # [중요] threaded=True는 다중 피드 처리를 위해 필수입니다.
     # use_reloader=False는 개발 모드 중복 실행을 방지합니다.
-    app.run(host='192.168.108.41', port=5000, debug=True, use_reloader=False, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False, threaded=True)
