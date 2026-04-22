@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>🚨 SECURITY ALERT</title>
+
+<style>
+body {
+    margin:0;
+    background:#020617;
+    color:white;
+    font-family:sans-serif;
+}
+
+.container {
+    padding:20px;
+}
+
+.top {
+    display:flex;
+    gap:10px;
+}
+
+.cam {
+    flex:1;
+    background:black;
+    border-radius:12px;
+    overflow:hidden;
+}
+
+.cam img {
+    width:100%;
+    height:250px;
+    object-fit:contain;
+}
+
+.log-box {
+    margin-top:15px;
+    background:#0f172a;
+    padding:15px;
+    border-radius:12px;
+}
+
+.log-box p {
+    margin:5px 0;
+}
+
+.btns {
+    margin-top:15px;
+    display:flex;
+    gap:10px;
+}
+
+.btn {
+    flex:1;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.report {
+    background:#f87171;
+}
+
+.ignore {
+    background:#1e293b;
+    color:white;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+    <!-- 카메라 -->
+    <div class="top">
+        <div class="cam">
+            <img src="/video_feed">
+        </div>
+        <div class="cam">
+            <img src="/turtle_feed">
+        </div>
+    </div>
+
+    <!-- 로그 -->
+    <div class="log-box" id="log-box">
+        <!-- 여기 JS로 채움 -->
+    </div>
+
+    <!-- 버튼 -->
+    <div class="btns">
+        <button class="btn report" onclick="report()">신고</button>
+        <button class="btn ignore" onclick="ignore()">무시</button>
+    </div>
+
+</div>
+
+<script>
+function report() {
+    alert("🚨 경찰 신고 요청됨 (추후 API 연결)");
+}
+
+function ignore() {
+    fetch('/clear_alert', {method:'POST'})
+    .then(()=>window.close());
+}
+
+async function loadAlert() {
+    const res = await fetch('/alert_status');
+    const data = await res.json();
+
+    console.log("alert data:", data);
+
+    const logBox = document.getElementById("log-box");
+
+    if (data.active && data.missing_items && data.missing_items.length > 0) {
+
+        let html = `<p>🚨 도난이 감지되었습니다.</p>`;
+        html += `<p>시간: ${new Date().toLocaleString()}</p><hr>`;
+
+        data.missing_items.forEach(item => {
+            html += `
+                <p><strong>ID:</strong> ${item.id}</p>
+                <p><strong>이름:</strong> ${item.name}</p>
+                <p><strong>위치:</strong> ${item.location}</p>
+                <hr>
+            `;
+        });
+
+        logBox.innerHTML = html;
+
+    } else {
+        logBox.innerHTML = "<p>도난 정보 없음</p>";
+    }
+}
+
+// 실행
+loadAlert();
+</script>
+
+</body>
+</html>

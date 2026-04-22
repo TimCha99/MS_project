@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MS-CMS | Professional Security Console</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <header class="main-header">
+            <div class="header-left">
+                <h2 style="margin:0; font-size:1.1rem; color:var(--accent); letter-spacing:2px;">MUSEUM SECURITY HUB</h2>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-modern btn-accent" onclick="window.open('/database', 'DB', 'width=1150,height=850')">DATABASE HUB</button>
+                <button class="btn-modern" onclick="alert('SLAM MAP 팝업을 호출합니다.')">MAP VIEW</button>
+                <button class="btn-modern" onclick="sendTestSMS()">MESSAGE TEST</button>
+                <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
+                <span style="font-size:0.85rem; color:var(--text-dim);">ADMIN: <strong style="color:white;">{{ session['user_name'] }}</strong></span>
+                <button class="btn-modern" style="border:none; color:var(--crit);" onclick="location.href='/logout'">LOGOUT</button>
+                <!--
+                <button class="btn-modern" onclick="testAlert()">ALERT TEST</button>
+                <button onclick="triggerTheft(942800)">1번 전시품 도난 테스트</button>
+                <button onclick="triggerTheft(2)">2번 전시품 도난 테스트</button>
+                -->
+        </header>
+
+        <main class="main-content">
+            <aside class="side-panel">
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Timeline</div>
+                    <div class="clock-display">
+                        <div id="clock-date" class="clock-date">2026. 04. 22</div>
+                        <div id="clock-time" class="clock-time">00:00:00</div>
+                    </div>
+                </article>
+
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Asset Operational Status</div>
+                    <div class="status-list">
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_01</span>
+                            <div style="text-align:right;">
+                                <span class="status-badge online">CONNECTED</span>
+                                <div style="font-size:0.8rem; color:var(--accent); font-weight:800; margin-top:4px;">92%</div>
+                            </div>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_02</span>
+                            <div style="text-align:right;">
+                                <span class="status-badge offline">DISCONNECTED</span>
+                                <div style="font-size:0.8rem; color:var(--text-dim); font-weight:800; margin-top:4px;">--%</div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="bento-card log-card">
+                    <div class="card-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Real-time Event Logs</span>
+                        <button class="btn-modern" style="padding: 2px 10px; font-size: 0.7rem; height: auto; border: 1px solid var(--border);" onclick="location.href='/download_logs'">Download</button>
+                    </div>
+                    
+                    <div id="log-list" class="log-area"></div>
+                </article>
+            </aside>
+
+            <section class="video-section">
+                <div class="video-box">
+                    <span class="video-id">CH 01: LOBBY</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH1', this)">● REC</button>
+                    <img src="/video/cam1">
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 02: GALLERY</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH2', this)">● REC</button>
+                    <img src="/video/cam2"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 03: TB01_OAKD</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH3', this)">● REC</button>
+                    <img src="/video/robot8_cam1"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 04: TB02_OAKD</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH4', this)">● REC</button>
+                    <img src="/video/robot8_cam2"> 
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const recorders = {};
+        // 시계 업데이트: 연.월.일 시:분:초
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.getFullYear() + ". " + String(now.getMonth() + 1).padStart(2, '0') + ". " + String(now.getDate()).padStart(2, '0');
+            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
+            document.getElementById('clock-date').innerText = dateStr;
+            document.getElementById('clock-time').innerText = timeStr;
+        }
+        setInterval(updateClock, 1000);
+
+        // 스마트 로그 업데이트: ID 기반 정렬 및 자동 스크롤
+        async function updateLogs() {
+            try {
+                const response = await fetch('/get_logs');
+                const logs = await response.json();
+                const logList = document.getElementById('log-list');
+
+                const isAtBottom = logList.scrollHeight - logList.scrollTop <= logList.clientHeight + 50;
+
+                logList.innerHTML = logs.map(log => {
+                    let color = "var(--info)";
+                    if(log.severity === 'WARN') color = "var(--warn)";
+                    if(log.severity === 'CRIT') color = "var(--crit)";
+                    
+                    return `<div style="color:${color}; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:4px;">
+                        <span style="color:#475569; font-size:0.65rem;">[ID:${String(log.id).padStart(4, '0')}]</span> 
+                        ${log.time.split(' ')[1]} | ${log.event}
+                    </div>`;
+                }).join('');
+
+                if (isAtBottom) logList.scrollTop = logList.scrollHeight;
+            } catch (e) { console.error("Log Fetch Error", e); }
+        }
+        setInterval(updateLogs, 2000);
+        // 서버에 로그를 전송하는 보조 함수
+        async function postLogToServer(message, severity = 'INFO') {
+            try {
+                await fetch('/api/add_log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, severity: severity })
+                });
+                updateLogs(); // 로그창 즉시 갱신
+            } catch (e) { console.error("Log error:", e); }
+        }
+        // [주의] 이 함수 하나만 남기고 기존의 toggleRecord 함수 2개는 모두 지워주세요!
+        function toggleRecord(ch, btn) {
+            // 장소 이름 가져오기 (CH 01: LOBBY 등)
+            const locationName = btn.previousElementSibling.innerText;
+            // 1. 이미 녹화 중이라면? -> 중지 로직
+            if (recorders[ch] && recorders[ch].isRecording) {
+                recorders[ch].recorder.stop();
+                recorders[ch].isDrawing = false; 
+                recorders[ch].isRecording = false;
+                // 버튼 디자인 원상 복구
+                btn.innerText = '● REC';
+                btn.style.color = '';
+                btn.style.fontWeight = 'normal';
+                // 서버 로그 기록 (종료)
+                postLogToServer(`[${locationName}]의 녹화가 저장되었습니다!`);
+                return;
+            }
+            // 2. 녹화 시작 로직
+            const img = btn.nextElementSibling; // 버튼 바로 밑의 img 태그
+            
+            // 투명 도화지(Canvas) 생성
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 스트림 추출 및 레코더 설정
+            const stream = canvas.captureStream(30); 
+            const recorder = new MediaRecorder(stream, { 
+                mimeType: 'video/webm; codecs=vp8',
+                bitsPerSecond: 2500000 
+            });
+            const chunks = [];
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                const now = new Date();
+                const timeStr = now.toISOString().replace(/T/, '_').replace(/:/g, '').split('.')[0];
+                // 팁: .mp4로 저장하고 싶으시면 아래를 .mp4로 바꾸셔도 됩니다!
+                a.download = `Record_${ch}_${timeStr}.webm`;
+                
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+            // 상태 저장
+            recorders[ch] = {
+                recorder: recorder,
+                isRecording: true,
+                isDrawing: true
+            };
+            // 버튼 상태 변경
+            btn.innerText = '■ STOP';
+            btn.style.color = '#ff4757';
+            btn.style.fontWeight = 'bold';
+            
+            // 캔버스 그리기 함수
+            function draw() {
+                if (!recorders[ch] || !recorders[ch].isDrawing) return;
+                if (img.complete && img.naturalWidth > 0) {
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+                requestAnimationFrame(draw);
+            }
+            // 서버 로그 기록 (시작)
+            postLogToServer(`[${locationName}]의 녹화를 시작합니다!`, 'WARN');
+            // 녹화 시작
+            recorder.start();
+            draw();
+        }
+        function startRecording() {
+            recorder.start();
+            console.log(`Recording started for ${ch}`);
+        }
+        
+        function sendTestSMS() {
+            if(confirm("보안 테스트 알림을 발송하시겠습니까?")) {
+                fetch('/send_sms', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to_number: '01081843638', text: '[MS-CMS] 실시간 관제 시스템 정상 가동 중' })
+                }).then(r => r.json()).then(d => alert(d.success ? "발송 성공" : "실패"));
+            }
+        }
+        
+        let alertWindow = null;
+
+        async function checkAlert() {
+            try {
+                const res = await fetch('/alert_status');
+                const data = await res.json();
+
+                console.log("alert 상태:", data);
+
+                if (data.active === true) {
+                    if (!alertWindow || alertWindow.closed) {
+                        const width = 600;
+                        const height = 400;
+
+                        const left = (window.screen.width / 2) - (width / 2);
+                        const top = (window.screen.height / 2) - (height / 2);
+
+                        alertWindow = window.open(
+                            '/alert_popup',
+                            'ALERT',
+                            `width=${width},height=${height},left=${left},top=${top}`
+                        );
+                    }
+                }
+            } catch (e) {
+                console.error("alert error:", e);
+            }
+        }
+        setInterval(checkAlert, 1000);
+
+        updateClock();
+        updateLogs();
+
+              
+    </script>
+</body>
+</html>
