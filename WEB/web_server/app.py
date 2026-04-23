@@ -8,47 +8,37 @@ import hashlib
 import requests
 import os
 import sqlite3
-<<<<<<< HEAD
 from werkzeug.utils import secure_filename
 import csv
 from io import StringIO
 import threading
-=======
 import threading
 from werkzeug.utils import secure_filename
 import csv
 from io import StringIO
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 
 # ==========================================
 # 1. 시스템 설정 및 초기화
 # ==========================================
 app = Flask(__name__)
-<<<<<<< HEAD
 
 # 세션을 안전하게 암호화하기 위한 비밀 키
 app.secret_key = os.urandom(24)
 
 # [카메라 설정] 0번 포트 + V4L2 백엔드 사용
 camera = cv2.VideoCapture(0, cv2.CAP_V4L2)
-
-=======
 app.secret_key = os.urandom(24)
 
 # [수정] 업로드 폴더 및 DB 경로
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 UPLOAD_FOLDER = 'static/uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-<<<<<<< HEAD
 
 # [DB 경로 설정] 현재 파일 위치 기준으로 database 폴더 안의 db 파일 지정
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database/ms_database.db')
-=======
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database/ms_database.db')
 
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 # [수정] 다중 카메라 지원을 위한 글로벌 변수 및 락(Lock)
 # 이유: 여러 YOLO 노드가 동시에 접속할 때 데이터 충돌을 방지합니다.
 frames = {
@@ -59,7 +49,6 @@ frame_lock = threading.Lock()
 # VALID_CAM_IDS에 터틀봇이 보내는 실제 이름을 추가하세요.
 VALID_CAM_IDS = {"cam1", "cam2", "robot8_cam1", "robot8_cam2"}
 
-<<<<<<< HEAD
 #자동 보안 ON/OFF
 security_active = False
 #알림
@@ -86,7 +75,6 @@ def security_scheduler():
 # ==========================================
 # 2. 영상 스트리밍 엔진
 # ==========================================
-=======
 # 알림 상태
 alert_state = {"active": False, "zone": None}
 
@@ -94,7 +82,6 @@ alert_state = {"active": False, "zone": None}
 # 2. YOLO 영상 수신 및 스트리밍 엔진 (핵심 최적화)
 # ==========================================
 
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 @app.route('/upload', methods=['POST'])
 def upload():
     file = request.files.get('file')
@@ -115,13 +102,10 @@ def upload():
     return jsonify({"status": "ok", "cam_id": cam_id})
 
 def generate_frames(cam_id):
-<<<<<<< HEAD
     last_sent_ts = 0  # 브라우저에 마지막으로 보낸 프레임의 시간
-=======
     """지능형 프레임 스킵이 적용된 스트리밍 엔진"""
     last_sent_ts = 0  # 브라우저에 마지막으로 보낸 프레임의 시간
     
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
     while True:
         with frame_lock:
             frame_obj = frames.get(cam_id)
@@ -149,52 +133,32 @@ def video_feed(cam_id):
         return "Invalid cam_id", 400
     return Response(generate_frames(cam_id), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-<<<<<<< HEAD
-
-
-# ==========================================
-# 3. 화면 렌더링 라우트 (GET)
-# ==========================================
-=======
 # ==========================================
 # 3. 화면 렌더링 라우트 (GET)
 # ==========================================
 
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 @app.route('/')
 def index():
     session.clear()
     return redirect(url_for('login_page'))
 
 @app.route('/login')
-<<<<<<< HEAD
 def login_page():        #로그인 페이지
-=======
-def login_page():
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
     return render_template('login.html')
 
 @app.route('/main')
 def main_page():
-<<<<<<< HEAD
     """[보안 구역] 메인 대시보드 - 로그인 체크 필수"""
-=======
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
     if 'user_id' not in session:
         return redirect(url_for('login_page'))
     return render_template('main.html')
 
-<<<<<<< HEAD
 @app.route('/register') #관리자 등록
-=======
-@app.route('/register')
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 def register_page():
     return render_template('register.html')
 
 @app.route('/database')
 def database_page():
-<<<<<<< HEAD
     """[핵심] DB에서 전시품 목록을 가져와서 페이지에 전달해야 합니다!"""
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -212,28 +176,12 @@ def database_page():
         print(f"DB 조회 오류: {e}")
         return render_template('database.html', items=[]) # 오류 시 빈 목록 전달
 
-
-# ==========================================
-# 4. 데이터 처리 로직 (POST)
-=======
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM items')
-        items = cursor.fetchall()
-        conn.close()
-        return render_template('database.html', items=items)
-    except Exception:
-        return render_template('database.html', items=[])
-
 # ==========================================
 # 4. 데이터 처리 로직 (POST) - SMS, LOG, DB 관리
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 # ==========================================
 
 @app.route('/register_process', methods=['POST'])
 def register_process():
-<<<<<<< HEAD
     """관리자 신규 가입 처리 (Master Code: 0123)"""
     emp_id = request.form.get('emp_id')
     password = request.form.get('password')
@@ -287,8 +235,8 @@ def login_process():
     else:
         return "<script>alert('아이디 또는 비밀번호가 틀렸습니다.'); history.back();</script>"
 
-@app.route('/logout')   #관리자 로그아웃 시, 메인 페이지 접근 불가
-=======
+@app.route('/logout')
+def logout():   #관리자 로그아웃 시, 메인 페이지 접근 불가
     emp_id, password = request.form.get('emp_id'), request.form.get('password')
     name, phone, auth_code = request.form.get('name'), request.form.get('phone'), request.form.get('auth_code')
     if auth_code != "0123":
@@ -303,30 +251,8 @@ def login_process():
     except Exception as e:
         return f"오류: {e}"
 
-@app.route('/login_process', methods=['POST'])
-def login_process():
-    session.clear()
-    emp_id, password = request.form.get('username'), request.form.get('password')
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT username FROM admins WHERE emp_id = ? AND password = ?', (emp_id, password))
-    user = cursor.fetchone()
-    conn.close()
-    if user:
-        session['user_id'], session['user_name'] = emp_id, user[0]
-        add_log(f"{user[0]} 관리자 접속", "INFO")
-        return redirect(url_for('main_page'))
-    return "<script>alert('로그인 실패'); history.back();</script>"
-
-@app.route('/logout')
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
-def logout():
-    session.clear()
-    return redirect(url_for('login_page'))
-
 @app.route('/send_sms', methods=['POST'])
 def send_sms():
-<<<<<<< HEAD
     """문자 발송 로직 (Solapi API)"""
     req_data = request.get_json() or {}
     to_number = req_data.get('to_number', '01081843638').replace('-', '')
@@ -397,8 +323,7 @@ def get_logs():
         return jsonify(logs)
     except Exception as e:
         return jsonify({"error": str(e)})
-    
-=======
+
     req_data = request.get_json() or {}
     to_number = req_data.get('to_number', '01081843638').replace('-', '')
     text = req_data.get('text', '관제 시스템 테스트')
@@ -505,7 +430,6 @@ def toggle_status():
     conn.close()
     return jsonify({"success": True})
 
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 @app.route('/download_logs')
 def download_logs():
     """DB에 저장된 모든 로그를 CSV 파일로 변환하여 다운로드"""
@@ -529,7 +453,6 @@ def download_logs():
     output.headers["Content-type"] = "text/csv"
     return output
 
-<<<<<<< HEAD
 @app.route('/db_register', methods=['POST'])
 def db_register():
     # 1. 폼 데이터 수집
@@ -774,8 +697,6 @@ def check_theft():
     return jsonify({"alert": False})
 
 # 3. DB 데이터 내보내기 (CSV 다운로드)
-=======
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
 @app.route('/download_items')
 def download_items():
     conn = sqlite3.connect(DB_PATH)
@@ -783,7 +704,7 @@ def download_items():
     cursor.execute('SELECT art_id, art_name, location, price, status FROM items')
     rows = cursor.fetchall()
     conn.close()
-<<<<<<< HEAD
+
  
     # CSV 생성
     si = StringIO()
@@ -842,80 +763,7 @@ def get_artifact_by_name(artifact_id):
     conn.close()
 
     return result
-'''
-#도난 됐을 때 예시 버튼(삭제)
-@app.route('/api/theft_detected', methods=['POST'])
-def theft_detected():
-    data = request.get_json()
-    artifact_id = data.get('artifact_id')  # ✔ ID 기준
 
-    admin_name = session.get('user_name', 'SYSTEM')
-
-    try:
-        conn = sqlite3.connect('database/ms_database.db')
-        cursor = conn.cursor()
-
-        # 1. 전시품 조회 (ID 기준)
-        cursor.execute("""
-            SELECT art_id, art_name, location, price, status, image_path
-            FROM items
-            WHERE art_id = ?
-        """, (artifact_id,))
-
-        item = cursor.fetchone()
-
-        if not item:
-            return jsonify({
-                "success": False,
-                "error": "해당 ID의 전시품이 없습니다."
-            })
-
-        _id, name, location, price, status, image_path = item
-
-        # 2. 이미 도난 상태면 중복 방지
-        if status == "abnormal":
-            return jsonify({
-                "success": True,
-                "message": "이미 도난 상태입니다."
-            })
-
-        # 3. 상태 변경 (도난 처리)
-        cursor.execute("""
-            UPDATE items
-            SET status = 'abnormal'
-            WHERE art_id = ?
-        """, (artifact_id,))
-
-        conn.commit()
-        conn.close()
-
-        # 4. 로그 기록
-        add_log(f"[도난 감지] {name} (ID:{artifact_id}, {location}) abnormal 전환", "CRIT")
-
-        return jsonify({
-            "success": True,
-            "message": f"{name} 도난 처리 완료"
-        })
-
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
-        '''
-# ==========================================
-# 5. 서버 실행
-# ==========================================
-if __name__ == '__main__':
-    #app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
-    if __name__ == '__main__':
-        threading.Thread(target=security_scheduler, daemon=True).start()
-        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
-=======
-    si = StringIO()
-    cw = csv.writer(si)
-    cw.writerow(['ID', 'Name', 'Location', 'Price', 'Status'])
-    cw.writerows(rows)
-    output = make_response(si.getvalue())
-    output.headers["Content-Disposition"] = "attachment; filename=items.csv"; output.headers["Content-type"] = "text/csv"
-    return output
 
 @app.route('/alert_status')
 def alert_status(): return jsonify(alert_state)
@@ -926,10 +774,8 @@ def clear_alert():
     return jsonify({"status": "cleared"})
 
 # ==========================================
-# 5. 서버 실행 (최종 파라미터 적용)
+# 5. 서버 실행
 # ==========================================
 if __name__ == '__main__':
-    # [중요] threaded=True는 다중 피드 처리를 위해 필수입니다.
-    # use_reloader=False는 개발 모드 중복 실행을 방지합니다.
-    app.run(host='192.168.108.41', port=5000, debug=True, use_reloader=False, threaded=True)
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
+    threading.Thread(target=security_scheduler, daemon=True).start()
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
