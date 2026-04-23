@@ -121,7 +121,7 @@
                     </div>`;
                 }).join('');
 
-                if (isAtBottom) logList.scrollTop = logList.scrollHeight;
+                logList.scrollTop = 0;
             } catch (e) { console.error("Log Fetch Error", e); }
         }
         setInterval(updateLogs, 2000);
