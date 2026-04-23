@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MS-CMS | Professional Security Console</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <header class="main-header">
+            <div class="header-left">
+                <h2 style="margin:0; font-size:1.1rem; color:var(--accent); letter-spacing:2px;">MUSEUM SECURITY HUB</h2>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-modern btn-accent" onclick="window.open('/database', 'DB', 'width=1150,height=850')">DATABASE HUB</button>
+                <button class="btn-modern" onclick="alert('SLAM MAP 팝업을 호출합니다.')">MAP VIEW</button>
+                <button class="btn-modern" onclick="sendTestSMS()">MESSAGE TEST</button>
+                
+                <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
+                
+                <span style="font-size:0.85rem; color:var(--text-dim);">ADMIN: <strong style="color:white;">{{ session['user_name'] }}</strong></span>
+                <button class="btn-modern" style="border:none; color:var(--crit);" onclick="location.href='/logout'">LOGOUT</button>
+                
+                <button class="btn-modern" onclick="testAlert()">ALERT TEST</button>
+                <button onclick="triggerTheft(942800)">1번 전시품 도난 테스트</button>
+                <button onclick="triggerTheft(2)">2번 전시품 도난 테스트</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="side-panel">
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Timeline</div>
+                    <div class="clock-display">
+                        <div id="clock-date" class="clock-date">2026. 04. 22</div>
+                        <div id="clock-time" class="clock-time">00:00:00</div>
+                    </div>
+                </article>
+
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Asset Operational Status</div>
+                    <div class="status-list">
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_01</span>
+                            <div style="text-align:right;">
+                                <span class="status-badge online">CONNECTED</span>
+                                <div style="font-size:0.8rem; color:var(--accent); font-weight:800; margin-top:4px;">92%</div>
+                            </div>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_02</span>
+                            <div style="text-align:right;">
+                                <span class="status-badge offline">DISCONNECTED</span>
+                                <div style="font-size:0.8rem; color:var(--text-dim); font-weight:800; margin-top:4px;">--%</div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="bento-card log-card">
+                    <div class="card-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Real-time Event Logs</span>
+                        <button class="btn-modern" style="padding: 2px 10px; font-size: 0.7rem; height: auto; border: 1px solid var(--border);" onclick="location.href='/download_logs'">Download</button>
+                    </div>
+                    <div id="log-list" class="log-area"></div>
+                </article>
+            </aside>
+
+            <section class="video-section">
+                <div class="video-box">
+                    <span class="video-id">CH 01: LOBBY</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH1', this)">● REC</button>
+                    <img src="/video/cam1"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 02: GALLERY</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH2', this)">● REC</button>
+                    <img src="/video/cam2"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 03: TB01_OAKD</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH3', this)">● REC</button>
+                    <img src="/video/robot8_cam1"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 04: TB02_OAKD</span>
+                    <button class="rec-btn" onclick="toggleRecord('CH4', this)">● REC</button>
+                    <img src="/video/robot8_cam2"> 
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        /**
+         * [시스템 시계 업데이트 함수]
+         * 역할: 사용자의 로컬 시간을 실시간으로 획득하여 화면에 표시함.
+         * 주기: 1,000ms(1초)마다 실행.
+         */
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.getFullYear() + ". " + String(now.getMonth() + 1).padStart(2, '0') + ". " + String(now.getDate()).padStart(2, '0');
+            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
+            document.getElementById('clock-date').innerText = dateStr;
+            document.getElementById('clock-time').innerText = timeStr;
+        }
+        setInterval(updateClock, 1000);
+
+        /**
+         * [실시간 로그 업데이트 함수]
+         * 역할: 서버의 /get_logs 엔드포인트에서 최신 보안 로그 50개를 비동기적으로 가져옴.
+         * 상세: 중요도(severity)에 따라 텍스트 색상을 동적으로 변경하며 자동 스크롤(Auto-scroll) 기능 지원.
+         */
+        async function updateLogs() {
+            try {
+                const response = await fetch('/get_logs');
+                const logs = await response.json();
+                const logList = document.getElementById('log-list');
+
+                // 사용자가 이전 로그를 보느라 위로 올렸을 때는 자동 스크롤을 멈추기 위한 조건 확인
+                const isAtBottom = logList.scrollHeight - logList.scrollTop <= logList.clientHeight + 50;
+
+                logList.innerHTML = logs.map(log => {
+                    let color = "var(--info)";
+                    if(log.severity === 'WARN') color = "var(--warn)";
+                    if(log.severity === 'CRIT') color = "var(--crit)";
+                    
+                    return `<div style="color:${color}; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:4px;">
+                        <span style="color:#475569; font-size:0.65rem;">[ID:${String(log.id).padStart(4, '0')}]</span> 
+                        ${log.time.split(' ')[1]} | ${log.event}
+                    </div>`;
+                }).join('');
+
+                if (isAtBottom) logList.scrollTop = logList.scrollHeight;
+            } catch (e) { console.error("Log Fetch Error", e); }
+        }
+        setInterval(updateLogs, 2000); // 2초마다 갱신
+
+        /**
+         * [서버 로그 기록 보조 함수]
+         * 역할: 프론트엔드에서 발생한 중요 액션(녹화 등)을 백엔드 DB에 기록하도록 요청함.
+         */
+        async function postLogToServer(message, severity = 'INFO') {
+            try {
+                await fetch('/api/add_log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, severity: severity })
+                });
+                updateLogs();
+            } catch (e) { console.error("Log error:", e); }
+        }
+
+        /**
+         * [채널별 녹화 제어 메인 함수]
+         * 역할: 사용자가 REC 버튼을 눌렀을 때 캔버스(Canvas)와 MediaRecorder를 이용해 영상을 캡처하고 저장함.
+         * 원리: 브라우저에 표시되는 <img> 태그의 이미지를 투명 캔버스에 1초에 30번 베껴 그린 뒤, 그 캔버스의 흐름을 녹화함.
+         */
+        const recorders = {}; // 채널별 녹화 객체 및 상태를 보관하는 메모리 저장소
+
+        function toggleRecord(ch, btn) {
+            const locationName = btn.previousElementSibling.innerText;
+
+            // [1] 가드 절(Guard Clause): 현재 해당 채널이 녹화 중이라면 녹화 중지 및 파일 생성
+            if (recorders[ch] && recorders[ch].isRecording) {
+                recorders[ch].recorder.stop(); // 녹화 중단
+                recorders[ch].isDrawing = false; // 캔버스 그리기 루프 중단
+                recorders[ch].isRecording = false;
+
+                btn.innerText = '● REC';
+                btn.style.color = '';
+                btn.style.fontWeight = 'normal';
+
+                postLogToServer(`[${locationName}]의 녹화가 저장되었습니다!`);
+                return; 
+            }
+
+            // [2] 시작 로직: 녹화 중이 아닐 때 실행 (캔버스 및 레코더 초기화)
+            const img = btn.nextElementSibling; // 대상 비디오 피드 이미지 소스
+            const canvas = document.createElement('canvas'); // 도화지 역할을 할 가상 캔버스
+            const ctx = canvas.getContext('2d');
+            
+            // 캔버스로부터 초당 30프레임($30FPS$)의 스트림 추출
+            const stream = canvas.captureStream(30); 
+            const recorder = new MediaRecorder(stream, { 
+                mimeType: 'video/webm; codecs=vp8',
+                bitsPerSecond: 2500000 // 화질 최적화 파라미터 (2.5Mbps)
+            });
+            const chunks = []; // 바이너리 비디오 조각들을 모을 배열
+
+            // 데이터 조각이 생성될 때마다 배열에 푸시
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+            // 녹화가 멈췄을 때 실행되는 저장 로직 (Blob 생성 및 다운로드 링크 클릭 시뮬레이션)
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const now = new Date();
+                const timeStr = now.toISOString().replace(/T/, '_').replace(/:/g, '').split('.')[0];
+                a.download = `Record_${ch}_${timeStr}.webm`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            // 상태 저장
+            recorders[ch] = { recorder: recorder, isRecording: true, isDrawing: true };
+            btn.innerText = '■ STOP';
+            btn.style.color = '#ff4757';
+            btn.style.fontWeight = 'bold';
+            
+            /**
+             * [이미지 렌더링 루프 함수]
+             * 역할: 원본 비디오 소스(img)를 실시간으로 캔버스에 복제하여 MediaRecorder가 읽을 수 있게 함.
+             */
+            function draw() {
+                if (!recorders[ch] || !recorders[ch].isDrawing) return;
+                if (img.complete && img.naturalWidth > 0) {
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
+                requestAnimationFrame(draw); // 브라우저 주사율에 맞춰 반복 호출 (최적화)
+            }
+
+            postLogToServer(`[${locationName}]의 녹화를 시작합니다!`, 'WARN');
+            recorder.start();
+            draw();
+        }
+
+        /**
+         * [긴급 SMS 발송 테스트 함수]
+         * 역할: 관리자 휴대전화로 보안 점검 메시지를 발송하도록 백엔드에 요청함.
+         */
+        function sendTestSMS() {
+            if(confirm("보안 테스트 알림을 발송하시겠습니까?")) {
+                fetch('/send_sms', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to_number: '01081843638', text: '[MS-CMS] 실시간 관제 시스템 정상 가동 중' })
+                }).then(r => r.json()).then(d => alert(d.success ? "발송 성공" : "실패"));
+            }
+        }
+
+        /**
+         * [비상 알람 상태 폴링(Polling) 함수]
+         * 역할: 1초마다 서버에 침입/도난 이벤트가 있는지 물어보고, 있다면 전용 팝업창을 띄움.
+         */
+        let alertWindow = null;
+        async function checkAlert() {
+            try {
+                const res = await fetch('/alert_status');
+                const data = await res.json();
+
+                if (data.active === true) {
+                    // 알람 팝업이 아직 안 떴거나 닫혀있을 때만 중앙에 팝업창 생성
+                    if (!alertWindow || alertWindow.closed) {
+                        const width = 600, height = 400;
+                        const left = (window.screen.width / 2) - (width / 2);
+                        const top = (window.screen.height / 2) - (height / 2);
+
+                        alertWindow = window.open('/alert_popup', 'ALERT', `width=${width},height=${height},left=${left},top=${top}`);
+                    }
+                }
+            } catch (e) { console.error("alert error:", e); }
+        }
+        setInterval(checkAlert, 1000);
+
+        /**
+         * [기타 시뮬레이션 및 테스트 함수들]
+         */
+        function testAlert() { // 서버에 강제로 알람 상태를 발생시키도록 요청
+            fetch('/trigger_alert').then(res => res.json()).catch(err => console.error(err));
+        }
+
+        function triggerTheft(artifact_id) { // 특정 유물 도난 상황을 가정하여 서버에 감지 데이터 전송
+            fetch('/api/theft_detected', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ artifact_id: artifact_id })
+            })
+            .then(res => res.json())
+            .then(data => alert(data.success ? "도난 감지 완료" : "실패: " + data.error))
+            .catch(err => console.error(err));
+        }
+
+        // 초기 실행
+        updateClock();
+        updateLogs();
+    </script>
+</body>
+</html>
