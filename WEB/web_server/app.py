@@ -324,112 +324,6 @@ def get_logs():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-    req_data = request.get_json() or {}
-    to_number = req_data.get('to_number', '01081843638').replace('-', '')
-    text = req_data.get('text', '관제 시스템 테스트')
-    # Solapi 설정 (기존 키 유지)
-    api_key, api_secret = 'NCS8OH3DQ6JGTFRN', 'Y8WIMULNXQ7T1JR2HVPH0BHVYRBMEP6I'
-    date = datetime.datetime.now().isoformat() + 'Z'
-    salt = str(uuid.uuid1().hex)
-    signature = hmac.new(api_secret.encode(), (date + salt).encode(), hashlib.sha256).hexdigest()
-    headers = {'Authorization': f'HMAC-SHA256 apiKey={api_key}, date={date}, salt={salt}, signature={signature}', 'Content-Type': 'application/json'}
-    data = {"message": {"to": to_number, "from": '01081843638', "text": text}}
-    try:
-        res = requests.post('https://api.solapi.com/messages/v4/send', headers=headers, json=data)
-        return jsonify({"success": True})
-    except Exception:
-        return jsonify({"success": False})
-
-def add_log(event_name, severity="INFO"):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        now_kst = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute('INSERT INTO logs (event, timestamp, severity) VALUES (?, ?, ?)', (event_name, now_kst, severity))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"로그 오류: {e}")
-
-@app.route('/get_logs')
-def get_logs():
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('SELECT id, event, timestamp, severity FROM logs ORDER BY id DESC LIMIT 50')
-        rows = cursor.fetchall()
-        conn.close()
-        return jsonify([{"id": f"{r[0]:04d}", "event": r[1], "time": r[2], "severity": r[3]} for r in rows])
-    except Exception as e:
-        return jsonify({"error": str(e)})
-
-# 기타 DB 관리 라우트 (항상 동일하게 유지)
-@app.route('/db_register', methods=['POST'])
-def db_register():
-    art_id, art_name = request.form.get('art_id'), request.form.get('art_name')
-    location, price, status = request.form.get('art_location'), request.form.get('art_price'), request.form.get('art_status', '정상')
-    file = request.files.get('art_image')
-    image_path = "/static/css/no_image.png"
-    if file:
-        filename = secure_filename(f"{art_id}.jpg")
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        image_path = f"/static/uploads/{filename}"
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('INSERT INTO items (art_id, art_name, location, price, status, image_path) VALUES (?,?,?,?,?,?)', (art_id, art_name, location, price, status, image_path))
-        conn.commit()
-        conn.close()
-        return "<script>alert('등록완료'); location.href='/database';</script>"
-    except Exception:
-        return "오류발생"
-
-@app.route('/get_items')
-def get_items():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM items')
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"art_id": r[0], "name": r[1], "location": r[2], "price": r[3], "status": r[4], "image": r[5]} for r in rows])
-
-@app.route('/delete_item/<art_id>', methods=['POST'])
-def delete_item(art_id):
-    admin_name = session.get('user_name', '관리자')
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM items WHERE art_id = ?', (art_id,))
-    conn.commit()
-    conn.close()
-    add_log(f"{admin_name} 관리자가 {art_id} 삭제함", "WARN")
-    return jsonify({"success": True})
-
-@app.route('/api/verify_password', methods=['POST'])
-def verify_password():
-    input_pw = request.get_json().get('password')
-    user_id = session.get('user_id')
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT 1 FROM admins WHERE emp_id = ? AND password = ?', (user_id, input_pw))
-    result = cursor.fetchone()
-    conn.close()
-    return jsonify({"success": bool(result)})
-
-@app.route('/api/toggle_status', methods=['POST'])
-def toggle_status():
-    art_id = request.get_json().get('art_id')
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT status FROM items WHERE art_id = ?', (art_id,))
-    item = cursor.fetchone()
-    if item:
-        new_status = "비정상" if item[0] == "정상" else "정상"
-        cursor.execute('UPDATE items SET status = ? WHERE art_id = ?', (new_status, art_id))
-        conn.commit()
-        add_log(f"상태 변경: {art_id} -> {new_status}", "INFO")
-    conn.close()
-    return jsonify({"success": True})
-
 @app.route('/download_logs')
 def download_logs():
     """DB에 저장된 모든 로그를 CSV 파일로 변환하여 다운로드"""
@@ -739,15 +633,6 @@ def clear_alert():
     alert_state["active"] = False
     alert_state["zone"] = None
     return jsonify({"status": "cleared"})
-'''
-#테스트용 버튼
-@app.route('/trigger_alert')
-def trigger_alert():
-    global alert_state
-    alert_state["active"] = True
-    alert_state["zone"] = "zoneA"  # 테스트용
-    return {"status": "triggered"}
-    '''
 #DB에서 도난 전시품 이름으로 찾기
 def get_artifact_by_name(artifact_id):
     conn = sqlite3.connect('database/ms_database.db')
@@ -763,15 +648,6 @@ def get_artifact_by_name(artifact_id):
     conn.close()
 
     return result
-
-
-@app.route('/alert_status')
-def alert_status(): return jsonify(alert_state)
-
-@app.route('/clear_alert', methods=['POST'])
-def clear_alert():
-    alert_state["active"] = False
-    return jsonify({"status": "cleared"})
 
 # ==========================================
 # 5. 서버 실행
