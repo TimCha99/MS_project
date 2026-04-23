@@ -28,23 +28,6 @@ def init_db():
         )
     ''')
 
-<<<<<<< HEAD
-    # 소장 중인 전시품목 
-=======
-    # [db_manager.py] 수정 부분
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS items (
-        art_id TEXT PRIMARY KEY,      -- 6자리 숫자 ID
-        art_name TEXT NOT NULL,       -- 작품명
-        location TEXT NOT NULL,       -- 위치
-        price TEXT NOT NULL,          -- 가격
-        status TEXT DEFAULT '정상',    -- 상태
-        image_path TEXT               -- [추가] 이미지 파일 경로
-        )
-    ''')
-<<<<<<< HEAD
-
     cursor.execute('''
     CREATE TABLE detected_items (
         art_id TEXT PRIMARY KEY
@@ -58,26 +41,3 @@ def init_db():
 
 if __name__ == "__main__":
     init_db()
-
-
-    """
-
-    #웹캠에서 인식한 전시품 (YOLO팀에서 보내줄 수 있는 데이터만 남기기)
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS detected_items (
-        art_id TEXT PRIMARY KEY,      -- 6자리 숫자 ID
-        art_name TEXT NOT NULL,       -- 작품명
-        location TEXT NOT NULL,       -- 위치
-        status TEXT DEFAULT '정상',    -- 상태
-        )
-    ''')
-    """
-=======
-    
-    conn.commit()
-    conn.close()
-    print("데이터베이스 최적화 완료: admins 및 logs 테이블이 준비되었습니다.")
-
-if __name__ == "__main__":
-    init_db()
->>>>>>> 0f17db195d509976f27c12d53333e6d7a04cd503
