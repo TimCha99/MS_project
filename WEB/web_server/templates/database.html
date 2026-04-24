@@ -5,17 +5,31 @@
     <title>Museum Security - 전시품목 DB 관리</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/database.css') }}">
     <script>
+        /**
+         * [전역 상태 변수]
+         * 역할: 사용자가 테이블에서 클릭하여 선택한 작품의 고유 ID를 메모리에 임시 보관함.
+         * 활용: 상태 변경(Update)이나 삭제(Delete) 요청 시 이 ID를 서버로 전송함.
+         */
         let selectedArtId = null;
 
+        /**
+         * [항목 선택 및 이미지 프리뷰 함수]
+         * 역할: 사용자가 테이블 행(Row)을 클릭했을 때 시각적 피드백을 주고 우측 뷰어에 이미지를 출력함.
+         * 파라미터: row(클릭된 요소), id(작품ID), name(작품명), imgPath(이미지 경로)
+         */
         function selectItem(row, id, name, imgPath) {
+            // 1. 기존에 선택된 행의 하이라이트 클래스를 제거하고 현재 행에 추가 (UI 상태 동기화)
             const rows = document.querySelectorAll('.data-table tbody tr');
             rows.forEach(r => r.classList.remove('selected-row'));
             row.classList.add('selected-row');
+            
+            // 2. 전역 변수에 현재 선택된 ID 저장
             selectedArtId = id;
 
             const imgEl = document.getElementById('item-image');
             const placeholder = document.getElementById('img-placeholder');
             
+            // 3. 이미지 존재 여부에 따른 조건부 렌더링 (이미지 경로가 있으면 표시, 없으면 텍스트 안내)
             if (imgPath && imgPath !== 'None') {
                 imgEl.src = imgPath;
                 imgEl.alt = name + " 이미지";
@@ -28,7 +42,11 @@
             }
         }
 
-        // [기능 1] 상태 변경: 현재 상태를 확인하여 반대로 전환
+        /**
+         * [기능 1] 비동기 상태 전환 (Update)
+         * 역할: 선택된 작품의 보안 상태(정상/비정상)를 서버에 요청하여 반전시킴.
+         * 원리: Fetch API를 사용하여 JSON 데이터를 비동기 송수신함.
+         */
         async function toggleStatus() {
             if (!selectedArtId) {
                 alert("변경할 항목을 선택해 주세요.");
@@ -36,26 +54,31 @@
             }
             
             try {
+                // 서버의 /api/toggle_status 엔드포인트로 POST 요청 전송
                 const response = await fetch('/api/toggle_status', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ art_id: selectedArtId })
                 });
                 const result = await response.json();
+                
+                // 성공 시 화면을 새로고침하여 DB의 변경된 상태를 반영 (location.reload)
                 if(result.success) {
                     location.reload();
                 }
             } catch (e) { alert("상태 변경 중 오류가 발생했습니다."); }
         }
 
-        // [기능 2] 비밀번호 재확인 후 삭제
-        // 기존 confirmDelete 수정
+        /**
+         * [기능 2] 보안 삭제 프로세스 (Delete with Security)
+         * 역할: 단순 삭제가 아닌 관리자 비밀번호 재확인 과정을 거치는 2단계 인증 삭제 로직.
+         */
         function confirmDelete() {
             if (!selectedArtId) {
                 alert("삭제할 항목을 선택해 주세요.");
                 return;
             }
-            // 모달 띄우기
+            // 비밀번호 입력 모달(Modal) 활성화 및 입력창 초기화
             document.getElementById('delete-pw-input').value = '';
             document.getElementById('delete-confirm-modal').style.display = 'flex';
         }
@@ -64,11 +87,16 @@
             document.getElementById('delete-confirm-modal').style.display = 'none';
         }
 
+        /**
+         * [비밀번호 검증 및 최종 삭제 실행]
+         * 원리: 1. 입력된 비밀번호를 서버로 보내 세션 관리자의 비밀번호와 대조.
+         * 2. 검증 성공 시에만 실제 삭제 API(/delete_item)를 호출함.
+         */
         async function submitDelete() {
             const inputPw = document.getElementById('delete-pw-input').value;
             if (!inputPw) return;
 
-            // 비밀번호 검증 API 호출
+            // 1단계: 비밀번호 검증 API 호출
             const vResponse = await fetch('/api/verify_password', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -77,12 +105,13 @@
             const vResult = await vResponse.json();
 
             if (vResult.success) {
+                // 2단계: 검증 성공 시 사용자에게 최종 확인 후 삭제 수행
                 if (confirm(`작품 [${selectedArtId}]를 정말 삭제하시겠습니까?`)) {
                     const dResponse = await fetch(`/delete_item/${selectedArtId}`, { method: 'POST' });
                     const dResult = await dResponse.json();
                     if (dResult.success) {
                         alert("성공적으로 삭제되었습니다.");
-                        location.reload();
+                        location.reload(); // 리스트 갱신
                     }
                 }
             } else {
@@ -91,11 +120,18 @@
             closeDeleteModal();
         }
 
-        // [기능 3] DB 데이터 다운로드 (CSV)
+        /**
+         * [기능 3] 전체 데이터 CSV 추출
+         * 역할: 서버로부터 생성된 CSV 파일을 브라우저로 다운로드함.
+         */
         function downloadDB() {
             location.href = '/download_items';
         }
 
+        /**
+         * [UI 제어] 신규 등록 폼 토글
+         * 역할: '신규 등록' 버튼 클릭 시 입력 폼을 화면에 표시하거나 숨김.
+         */
         function toggleRegisterForm() {
             let form = document.getElementById('register-form');
             form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
@@ -199,15 +235,15 @@
     </div>
 
     <div id="delete-confirm-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-        <h3>⚠️ 보안 확인</h3>
-        <p>전시품을 삭제하려면 관리자 비밀번호를 입력하세요.</p>
-        <input type="password" id="delete-pw-input" placeholder="비밀번호 입력">
-        <div class="modal-buttons">
-            <button class="btn-danger" onclick="submitDelete()">삭제 승인</button>
-            <button class="btn-outline" onclick="closeDeleteModal()">취소</button>
+        <div class="modal-content">
+            <h3>보안 확인</h3>
+            <p>전시품을 삭제하려면 관리자 비밀번호를 입력하세요.</p>
+            <input type="password" id="delete-pw-input" placeholder="비밀번호 입력">
+            <div class="modal-buttons">
+                <button class="btn-danger" onclick="submitDelete()">삭제 승인</button>
+                <button class="btn-outline" onclick="closeDeleteModal()">취소</button>
+            </div>
         </div>
     </div>
-</div>
 </body>
 </html>
