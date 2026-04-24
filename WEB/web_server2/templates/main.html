@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MS-CMS | Professional Security Console</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+</head>
+<body>
+
+    <div class="app-wrapper">
+        <header class="main-header">
+            <div class="header-left">
+                <h2 style="margin:0; font-size:1.1rem; color:var(--accent); letter-spacing:2px;">MUSEUM SECURITY HUB</h2>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-modern btn-accent" onclick="window.open('/database', 'DB', 'width=1150,height=850')">DATABASE HUB</button>
+                
+                <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
+                
+                <span style="font-size:0.85rem; color:var(--text-dim);">ADMIN: <strong style="color:white;">{{ session['user_name'] }}</strong></span>
+                <button class="btn-modern" style="border:none; color:var(--crit);" onclick="location.href='/logout'">LOGOUT</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="side-panel">
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Timeline</div>
+                    <div class="clock-display">
+                        <div id="clock-date" class="clock-date">2026. 04. 22</div>
+                        <div id="clock-time" class="clock-time">00:00:00</div>
+                    </div>
+                </article>
+
+                <article class="bento-card fixed-card">
+                    <div class="card-label">Asset Operational Status</div>
+                    <div class="status-list">
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_01</span>
+                            <div style="text-align:right;">
+                                <span id="tb01-status" class="status-badge offline">DISCONNECTED</span>
+                                <div id="tb01-battery" style="font-size:0.8rem; color:var(--text-dim); font-weight:800; margin-top:4px;">--%</div>
+                            </div>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-name">TURTLEBOT_02</span>
+                            <div style="text-align:right;">
+                                <span id="tb02-status" class="status-badge offline">DISCONNECTED</span>
+                                <div id="tb02-battery" style="font-size:0.8rem; color:var(--text-dim); font-weight:800; margin-top:4px;">--%</div>
+                            </div>
+                        </div>
+                    </div> 
+                </article>
+
+                <article class="bento-card log-card">
+                    <div class="card-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Real-time Event Logs</span>
+                        <button class="btn-modern" style="padding: 2px 10px; font-size: 0.7rem; height: auto; border: 1px solid var(--border);" onclick="location.href='/download_logs'">Download</button>
+                    </div>
+                    <div id="log-list" class="log-area"></div>
+                </article>
+            </aside>
+
+            <section class="video-section">
+                <div class="video-box">
+                    <span class="video-id">CH 01: LOBBY</span>
+                    <button class="rec-btn" onclick="toggleRecord('cam1', this)">● REC</button> <img src="/video/cam1"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 02: GALLERY</span>
+                    <button class="rec-btn" onclick="toggleRecord('cam2', this)">● REC</button> <img src="/video/cam2"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 03: TB01_OAKD</span>
+                    <button class="rec-btn" onclick="toggleRecord('robot8_cam1', this)">● REC</button> <img src="/video/robot8_cam1"> 
+                </div>
+                <div class="video-box">
+                    <span class="video-id">CH 04: TB02_OAKD</span>
+                    <button class="rec-btn" onclick="toggleRecord('robot8_cam2', this)">● REC</button> <img src="/video/robot8_cam2"> 
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const previousRobotStatus = {
+            'TURTLEBOT_01': 'DISCONNECTED',
+            'TURTLEBOT_02': 'DISCONNECTED'
+        };
+
+        /**
+         * [시스템 시계 업데이트 함수]
+         */
+        function updateClock() {
+            const now = new Date();
+            const dateStr = now.getFullYear() + ". " + String(now.getMonth() + 1).padStart(2, '0') + ". " + String(now.getDate()).padStart(2, '0');
+            const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
+            document.getElementById('clock-date').innerText = dateStr;
+            document.getElementById('clock-time').innerText = timeStr;
+        }
+        setInterval(updateClock, 1000);
+
+        /**
+         * [실시간 로그 업데이트 함수]
+         */
+        async function updateLogs() {
+            try {
+                const response = await fetch('/get_logs');
+                const logs = await response.json();
+                const logList = document.getElementById('log-list');
+
+                const isAtBottom = logList.scrollHeight - logList.scrollTop <= logList.clientHeight + 50;
+
+                logList.innerHTML = logs.map(log => {
+                    let color = "var(--info)";
+                    if(log.severity === 'WARN') color = "var(--warn)";
+                    if(log.severity === 'CRIT') color = "var(--crit)";
+                    
+                    return `<div style="color:${color}; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:4px;">
+                        <span style="color:#475569; font-size:0.65rem;">[ID:${String(log.id).padStart(4, '0')}]</span> 
+                        ${log.time.split(' ')[1]} | ${log.event}
+                    </div>`;
+                }).join('');
+
+                logList.scrollTop = 0;
+            } catch (e) { console.error("Log Fetch Error", e); }
+        }
+        setInterval(updateLogs, 2000); 
+
+        /**
+         * [서버 로그 기록 보조 함수]
+         */
+        async function postLogToServer(message, severity = 'INFO') {
+            try {
+                await fetch('/api/add_log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, severity: severity })
+                });
+                updateLogs();
+            } catch (e) { console.error("Log error:", e); }
+        }
+
+        /**
+         * [채널별 녹화 제어 메인 함수]
+         */
+        const recorders = {};
+
+        async function toggleRecord(camId, btn) {
+            if (recorders[camId]) {
+                btn.innerText = '저장 중...';
+                try {
+                    const res = await fetch(`/api/stop_record/${camId}`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                        recorders[camId] = false;
+                        btn.innerText = '● REC';
+                        btn.style.color = '';
+                        btn.style.fontWeight = 'normal';
+                        
+                        // 🔥 서버가 남긴 로그를 즉시 화면에 업데이트
+                        updateLogs(); 
+                        alert(`저장 완료!\n경로: ${data.file}`);
+                    }
+                } catch (e) { console.error(e); }
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/start_record/${camId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    recorders[camId] = true;
+                    btn.innerText = '■ STOP';
+                    btn.style.color = '#ff4757';
+                    btn.style.fontWeight = 'bold';
+                    
+                    // 🔥 서버가 남긴 로그를 즉시 화면에 업데이트
+                    updateLogs(); 
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        /**
+         * [비상 알람 상태 폴링(Polling) 함수]
+         * 역할: 실제 침입/도난 이벤트가 서버에서 감지되었을 때 전용 팝업창을 띄움.
+         */
+        let alertWindow = null;
+        async function checkAlert() {
+            try {
+                const res = await fetch('/alert_status');
+                const data = await res.json();
+
+                if (data.active === true) {
+                    if (!alertWindow || alertWindow.closed) {
+                        const width = 600, height = 400;
+                        const left = (window.screen.width / 2) - (width / 2);
+                        const top = (window.screen.height / 2) - (height / 2);
+
+                        alertWindow = window.open('/alert_popup', 'ALERT', `width=${width},height=${height},left=${left},top=${top}`);
+                    }
+                }
+            } catch (e) { console.error("alert error:", e); }
+        }
+        setInterval(checkAlert, 1000);
+
+        /**
+         * [로봇 상태 실시간 업데이트 함수]
+         */
+        async function updateRobotStatus(endpoint = '/api/get_robot_states') {
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+
+                Object.keys(data).forEach(robotId => {
+                    const prefix = robotId.toLowerCase().replace('turtlebot_', 'tb');
+                    const badge = document.getElementById(`${prefix}-status`);
+                    const batt = document.getElementById(`${prefix}-battery`);
+
+                    if (badge && batt) {
+                        const robotData = data[robotId];
+                        const isOnline = robotData.status === 'CONNECTED';
+
+                        if (previousRobotStatus[robotId] === 'CONNECTED' && robotData.status === 'DISCONNECTED') {
+                            postLogToServer(`[${robotId}] 통신 두절됨! 즉시 확인 필요`, 'CRIT');
+                        }
+                        previousRobotStatus[robotId] = robotData.status;
+
+                        badge.innerText = robotData.status;
+                        badge.className = `status-badge ${isOnline ? 'online' : 'offline'}`;
+
+                        batt.innerText = isOnline ? `${robotData.battery}%` : '--%';
+                        
+                        if (isOnline) {
+                            batt.style.color = robotData.battery <= 20 ? '#ff4757' : 'var(--accent)';
+                            batt.style.fontWeight = robotData.battery <= 20 ? '900' : '800';
+                        } else {
+                            batt.style.color = 'var(--text-dim)';
+                        }
+                    }
+                });
+            } catch (e) { console.error("Robot Status Update Error:", e); }
+        }
+
+        setInterval(() => updateRobotStatus(), 2000);
+        
+        // 초기 실행
+        updateClock();
+        updateLogs();
+    </script>
+</body>
+</html>
