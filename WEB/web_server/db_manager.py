@@ -27,22 +27,33 @@ def init_db():
             severity TEXT NOT NULL
         )
     ''')
-# [db_manager.py] 수정 부분
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS web_items (
+        art_id TEXT PRIMARY KEY,
+        art_name TEXT NOT NULL,
+        location TEXT NOT NULL,
+        price TEXT NOT NULL,
+        status TEXT DEFAULT '정상',
+        image_path TEXT
+    )
+    ''')
 
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS items (
-        art_id TEXT PRIMARY KEY,      -- 6자리 숫자 ID
-        art_name TEXT NOT NULL,       -- 작품명
-        location TEXT NOT NULL,       -- 위치
-        price TEXT NOT NULL,          -- 가격
-        status TEXT DEFAULT '정상',    -- 상태
-        image_path TEXT               -- [추가] 이미지 파일 경로
-        )
-    ''')
+    CREATE TABLE IF NOT EXISTS turtle_items (
+        art_id TEXT PRIMARY KEY,
+        art_name TEXT NOT NULL,
+        location TEXT NOT NULL,
+        price TEXT NOT NULL,
+        status TEXT DEFAULT '정상',
+        image_path TEXT
+    )
+    ''')
+
     cursor.execute('''
-    CREATE TABLE detected_items (
-        art_id TEXT PRIMARY KEY
-    );
+    CREATE TABLE IF NOT EXISTS detected_items (
+        art_id TEXT PRIMARY KEY,
+        art_name TEXT NOT NULL
+    )
     ''')
    
     conn.commit()

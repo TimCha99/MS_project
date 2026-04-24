@@ -37,7 +37,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # [DB 경로 설정] 현재 파일 위치 기준으로 database 폴더 안의 db 파일 지정
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database/ms_database.db')
-DB_PATH = os.path.join(os.path.dirname(__file__), 'database/ms_database.db')
 
 # [수정] 다중 카메라 지원을 위한 글로벌 변수 및 락(Lock)
 # 이유: 여러 YOLO 노드가 동시에 접속할 때 데이터 충돌을 방지합니다.
@@ -49,34 +48,59 @@ frame_lock = threading.Lock()
 # VALID_CAM_IDS에 터틀봇이 보내는 실제 이름을 추가하세요.
 VALID_CAM_IDS = {"cam1", "cam2", "robot8_cam1", "robot8_cam2"}
 
+# 🔥 캡쳐 이미지 저장용
+captured_images = {}
+
+# 🔥 캡쳐 폴더
+CAPTURE_FOLDER = 'static/capture'
+if not os.path.exists(CAPTURE_FOLDER):
+    os.makedirs(CAPTURE_FOLDER)
+
 #자동 보안 ON/OFF
 security_active = False
 #알림
 alert_state = {"active": False, "zone": None}
+@app.route('/api/security_status')
+def security_status():
+    global security_active
+
+    return jsonify({
+        "security_active": security_active
+    })
 #20시 되면 자동 보안 감지 시작, 6시 되면 자동으로 꺼짐
 def security_scheduler():
     global security_active
 
+    last_state = None
+
     while True:
         now = datetime.datetime.now().time()
 
-        # 20:00 ~ 23:59 OR 00:00 ~ 06:00
-        if now >= datetime.time(18, 0) or now <= datetime.time(6, 0):
-            if not security_active:
-                print("🔒 자동 보안 ON")
-                security_active = True
+        # 18:00 ~ 06:00
+        if now >= datetime.time(12, 0) or now < datetime.time(6, 0):
+            new_state = True
         else:
-            if security_active:
-                print("🔓 자동 보안 OFF")
-                security_active = False
+            new_state = False
 
-        time.sleep(10)  # 10초마다 체크
+        if new_state != last_state:
+            security_active = new_state
+            last_state = new_state
+
+            print("🔒 ON" if new_state else "🔓 OFF")
+
+        time.sleep(60) #1분마다 확인
 
 # ==========================================
 # 2. 영상 스트리밍 엔진
 # ==========================================
 # 알림 상태
-alert_state = {"active": False, "zone": None}
+alert_state = {
+    "active": False,
+    "zone": None,
+    "captured_image": None,
+    "db_image": None,
+    "art_name": None
+}
 
 # ==========================================
 # 2. YOLO 영상 수신 및 스트리밍 엔진 (핵심 최적화)
@@ -133,6 +157,28 @@ def video_feed(cam_id):
         return "Invalid cam_id", 400
     return Response(generate_frames(cam_id), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+#테스트용 코드 
+@app.route('/fake_frame')
+def fake_frame():
+    cam_id = "cam1"
+
+    test_img_path = os.path.join("static/uploads", "990041.jpg")
+
+    if not os.path.exists(test_img_path):
+        return "❌ test.jpg 없음", 404
+
+    with open(test_img_path, "rb") as f:
+        frame_data = f.read()
+
+    with frame_lock:
+        frames[cam_id] = {
+            "data": frame_data,
+            "ts": time.time()
+        }
+
+    print("🧪 fake frame 삽입 완료")
+
+    return "OK"
 # ==========================================
 # 3. 화면 렌더링 라우트 (GET)
 # ==========================================
@@ -159,22 +205,19 @@ def register_page():
 
 @app.route('/database')
 def database_page():
-    """[핵심] DB에서 전시품 목록을 가져와서 페이지에 전달해야 합니다!"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # 1. items 테이블의 모든 데이터 조회
-        cursor.execute('SELECT * FROM items')
-        items = cursor.fetchall() # 모든 행을 리스트로 가져옴
-        conn.close()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
-        # 2. [중요] items 변수를 HTML로 넘겨줍니다.
-        return render_template('database.html', items=items)
-        
-    except Exception as e:
-        print(f"DB 조회 오류: {e}")
-        return render_template('database.html', items=[]) # 오류 시 빈 목록 전달
+    cursor.execute('''
+        SELECT * FROM web_items
+        UNION ALL
+        SELECT * FROM turtle_items
+    ''')
+
+    items = cursor.fetchall()
+    conn.close()
+
+    return render_template('database.html', items=items)
 
 # ==========================================
 # 4. 데이터 처리 로직 (POST) - SMS, LOG, DB 관리
@@ -349,85 +392,65 @@ def download_logs():
 
 @app.route('/db_register', methods=['POST'])
 def db_register():
-    # 1. 폼 데이터 수집
-    art_id = request.form.get('art_id') # 6자리 숫자
+    art_id = request.form.get('art_id')
     art_name = request.form.get('art_name')
     location = request.form.get('art_location')
     price = request.form.get('art_price')
     status = request.form.get('art_status', '정상')
+    item_type = request.form.get('item_type')
 
-    # 2. 이미지 파일 처리
     file = request.files.get('art_image')
-    image_path = "/static/css/no_image.png" # 기본 이미지
-    
+    image_path = "/static/css/no_image.png"
+
     if file:
-        filename = secure_filename(f"{art_id}.jpg") # ID를 파일명으로 사용
+        filename = secure_filename(f"{art_id}.jpg")
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         image_path = f"/static/uploads/{filename}"
 
-    # 3. DB 저장
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO items (art_id, art_name, location, price, status, image_path)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (art_id, art_name, location, price, status, image_path))
-        conn.commit()
-        conn.close()
-        
-        add_log(f"신규 전시품 등록: {art_name} ({art_id})", "INFO")
-        return "<script>alert('전시품이 등록되었습니다.'); location.href='/database';</script>"
-    except Exception as e:
-        return f"등록 오류: {str(e)}"
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
+    table = "turtle_items" if item_type == "turtle" else "web_items"
+
+    cursor.execute(f'''
+        INSERT INTO {table} (art_id, art_name, location, price, status, image_path)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (art_id, art_name, location, price, status, image_path))
+
+    conn.commit()
+    conn.close()
+
+    return "<script>alert('등록 완료'); location.href='/database';</script>"
 # 1. 전시품 목록 가져오기 API
 @app.route('/get_items')
 def get_items():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM items')
+
+    cursor.execute('''
+        SELECT * FROM web_items
+        UNION ALL
+        SELECT * FROM turtle_items
+    ''')
+
     rows = cursor.fetchall()
     conn.close()
 
-    items = []
-    for row in rows:
-        items.append({
-            "art_id": row[0],
-            "name": row[1],
-            "location": row[2],
-            "price": row[3],
-            "status": row[4],
-            "image": row[5]
-        })
-    return jsonify(items)
+    return jsonify(rows)
 
 # 2. 전시품 삭제 API
 @app.route('/delete_item/<art_id>', methods=['POST'])
 def delete_item(art_id):
-    try:
-        # 1. 세션에서 현재 로그인한 관리자 이름 추출
-        admin_name = session.get('user_name', '알 수 없는 관리자')
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # [디테일] 삭제 전, 로그에 남길 작품 이름을 미리 가져옵니다.
-        cursor.execute('SELECT art_name FROM items WHERE art_id = ?', (art_id,))
-        item = cursor.fetchone()
-        item_name = item[0] if item else "알 수 없는 작품"
-        
-        # 2. DB에서 삭제 실행
-        cursor.execute('DELETE FROM items WHERE art_id = ?', (art_id,))
-        conn.commit()
-        conn.close()
-        
-        # 3. [핵심] 관리자 이름을 포함하여 로그 기록
-        add_log(f"{admin_name} 관리자가 전시품 [{item_name}({art_id})] 삭제함", "WARN")
-        
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute('DELETE FROM web_items WHERE art_id=?', (art_id,))
+    cursor.execute('DELETE FROM turtle_items WHERE art_id=?', (art_id,))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
     
 # [app.py] 수정된 비밀번호 검증 API
 @app.route('/api/verify_password', methods=['POST'])
@@ -450,30 +473,31 @@ def verify_password():
 def toggle_status():
     data = request.get_json()
     art_id = data.get('art_id')
-    admin_name = session.get('user_name', '관리자')
 
-    try:        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # 현재 상태 확인
-        cursor.execute('SELECT art_name, status FROM items WHERE art_id = ?', (art_id,))
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # web 먼저 확인
+    cursor.execute('SELECT art_name, status FROM web_items WHERE art_id=?', (art_id,))
+    item = cursor.fetchone()
+
+    if item:
+        table = "web_items"
+    else:
+        cursor.execute('SELECT art_name, status FROM turtle_items WHERE art_id=?', (art_id,))
         item = cursor.fetchone()
-        
-        if item:
-            new_status = "비정상" if item[1] == "정상" else "정상"
-            cursor.execute('UPDATE items SET status = ? WHERE art_id = ?', (new_status, art_id))
-            conn.commit()
-            
-            # 로그 기록
-            add_log(f"{admin_name} 관리자가 [{item[0]}] 상태를 {new_status}으로 전환함", "INFO")
-            conn.close()
-            return jsonify({"success": True})
-        
-        conn.close()
-        return jsonify({"success": False, "error": "ID 미발견"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+        table = "turtle_items"
+
+    if not item:
+        return jsonify({"success": False})
+
+    new_status = "비정상" if item[1] == "정상" else "정상"
+
+    cursor.execute(f'UPDATE {table} SET status=? WHERE art_id=?', (new_status, art_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True})
     
 # 웹캠으로 인식한 전시품 품목 업데이트
 @app.route('/api/update_detected', methods=['POST'])
@@ -551,20 +575,21 @@ def check_missing_items():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # 전체 전시품
-    cursor.execute('SELECT art_id FROM items')
-    all_items = set([row[0] for row in cursor.fetchall()])
+    # 전체
+    cursor.execute('''
+        SELECT art_id FROM web_items
+        UNION
+        SELECT art_id FROM turtle_items
+    ''')
+    all_items = set([r[0] for r in cursor.fetchall()])
 
-    # 현재 감지된 전시품
+    # 감지
     cursor.execute('SELECT art_id FROM detected_items')
-    detected_items = set([row[0] for row in cursor.fetchall()])
+    detected = set([r[0] for r in cursor.fetchall()])
 
     conn.close()
 
-    # 사라진 전시품
-    missing = all_items - detected_items
-
-    return list(missing)
+    return list(all_items - detected)
 
 # 경보 트리거
 @app.route('/api/check_theft')
@@ -589,27 +614,108 @@ def check_theft():
         })
 
     return jsonify({"alert": False})
+#도난 외부 감지 API
+@app.route('/api/external_alert', methods=['POST'])
+def external_alert():
+    global alert_state
+
+    data = request.get_json()
+    art_id = data.get("art_id")
+    cam_id = data.get("cam_id")
+
+    if not art_id or not cam_id:
+        return jsonify({"error": "missing data"}), 400
+
+    # 캡쳐
+    captured_path = capture_frame(cam_id)
+
+    # DB 조회 (수정 완료 버전)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT art_id, art_name, location, image_path FROM web_items WHERE art_id=?
+        UNION ALL
+        SELECT art_id, art_name, location, image_path FROM turtle_items WHERE art_id=?
+    ''', (art_id, art_id))
+
+    item = cursor.fetchone()
+    conn.close()
+
+    if not item:
+        return jsonify({"error": "item not found"}), 404
+
+    # alert 상태
+    alert_state = {
+        "active": True,
+        "cam_id": cam_id,
+        "captured_image": captured_path,
+        "missing_items": [{
+            "id": item[0],
+            "name": item[1],
+            "location": item[2],
+            "image": item[3]
+        }]
+    }
+
+    add_log(f"[외부 감지] {art_id}", "CRIT")
+
+    return jsonify({"success": True})
+
+ALERT_IMAGE_PATH  =  "static/uploads/alert.jpg" 
+def capture_frame(cam_id):
+    with frame_lock:
+        frame_obj = frames.get(cam_id)
+
+    if not frame_obj:
+        return None
+
+    try:
+        with open(ALERT_IMAGE_PATH, "wb") as f:
+            f.write(frame_obj["data"])
+        return "/" + ALERT_IMAGE_PATH
+    except Exception as e:
+        print("캡쳐 실패:", e)
+        return None
+    
+#YOLO팀에 데이터베이스 테이블 보내주는 코드
+@app.route('/items/<table_name>')
+def get_items_simple(table_name):
+    if table_name not in ['web_items', 'turtle_items']:
+        return jsonify({"error": "invalid table"}), 400
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(f"SELECT art_name FROM {table_name}")
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return jsonify({"items": [row[0] for row in rows]})
 
 # 3. DB 데이터 내보내기 (CSV 다운로드)
 @app.route('/download_items')
 def download_items():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT art_id, art_name, location, price, status FROM items')
+
+    cursor.execute('''
+        SELECT art_id, art_name, location, price, status FROM web_items
+        UNION ALL
+        SELECT art_id, art_name, location, price, status FROM turtle_items
+    ''')
+
     rows = cursor.fetchall()
     conn.close()
 
- 
-    # CSV 생성
     si = StringIO()
     cw = csv.writer(si)
-    cw.writerow(['ID', 'Name', 'Location', 'Price', 'Status']) # 헤더
+    cw.writerow(['ID', 'Name', 'Location', 'Price', 'Status'])
     cw.writerows(rows)
-    
-    output = make_response(si.getvalue())
-    output.headers["Content-Disposition"] = "attachment; filename=museum_items_db.csv"
-    return output
 
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = "attachment; filename=items.csv"
+    return output
 # ======================
 # Alert 페이지
 # ======================
@@ -634,20 +740,20 @@ def clear_alert():
     alert_state["zone"] = None
     return jsonify({"status": "cleared"})
 #DB에서 도난 전시품 이름으로 찾기
-def get_artifact_by_name(artifact_id):
-    conn = sqlite3.connect('database/ms_database.db')
+def get_artifact(art_id):
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("""
-            SELECT art_id, art_name, location, price, status, image_path
-            FROM items
-            WHERE art_id = ?
-        """, (artifact_id,))
+    cursor.execute('''
+        SELECT art_id, art_name, location, image_path FROM web_items WHERE art_id=?
+        UNION
+        SELECT art_id, art_name, location, image_path FROM turtle_items WHERE art_id=?
+    ''', (art_id, art_id))
 
-    result = cursor.fetchone()
+    item = cursor.fetchone()
     conn.close()
 
-    return result
+    return item
 
 # ==========================================
 # 5. 서버 실행

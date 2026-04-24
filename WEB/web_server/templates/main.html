@@ -18,7 +18,6 @@
             <div class="btn-group">
                 <button class="btn-modern btn-accent" onclick="window.open('/database', 'DB', 'width=1150,height=850')">DATABASE HUB</button>
                 <button class="btn-modern" onclick="alert('SLAM MAP 팝업을 호출합니다.')">MAP VIEW</button>
-                <button class="btn-modern" onclick="sendTestSMS()">MESSAGE TEST</button>
                 <div style="width:1px; height:20px; background:var(--border); margin:0 10px;"></div>
                 <span style="font-size:0.85rem; color:var(--text-dim);">ADMIN: <strong style="color:white;">{{ session['user_name'] }}</strong></span>
                 <button class="btn-modern" style="border:none; color:var(--crit);" onclick="location.href='/logout'">LOGOUT</button>
@@ -216,15 +215,6 @@
             console.log(`Recording started for ${ch}`);
         }
         
-        function sendTestSMS() {
-            if(confirm("보안 테스트 알림을 발송하시겠습니까?")) {
-                fetch('/send_sms', { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ to_number: '01081843638', text: '[MS-CMS] 실시간 관제 시스템 정상 가동 중' })
-                }).then(r => r.json()).then(d => alert(d.success ? "발송 성공" : "실패"));
-            }
-        }
         let alertWindow = null;
 
         async function checkAlert() {
