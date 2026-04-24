@@ -76,16 +76,23 @@ body {
 
     <!-- 카메라 -->
     <div class="top">
+
+        <!-- CCTV -->
         <div class="cam">
-            <img src="/video_feed">
+            <h3>📷 CCTV 캡쳐</h3>
+            <img id="capture_img" src="">
         </div>
+
+        <!-- DB 이미지 -->
         <div class="cam">
-            <img src="/turtle_feed">
+            <h3>🖼️ DB 이미지</h3>
+            <img id="db_img" src="">
         </div>
+
     </div>
 
     <!-- 로그 -->
-    <div class="log-box">
+    <div class="log-box" id="log-box">
         <p>🚨 도난이 감지되었습니다.</p>
         <p>전시품: GOLD_STATUE_01</p>
         <p>위치: ZONE A</p>
@@ -104,10 +111,6 @@ body {
 
 document.getElementById("time").innerText = new Date().toLocaleString();
 
-function report() {
-    alert("경찰 신고 요청됨 (추후 API 연결)");
-}
-
 function ignore() {
     fetch('/clear_alert', {method:'POST'})
     .then(()=>window.close());
@@ -119,31 +122,56 @@ async function loadAlert() {
 
     console.log("alert data:", data);
 
-    const logBox = document.getElementById("log-box");
-
     if (data.active && data.missing_items && data.missing_items.length > 0) {
 
-        let html = `<p>🚨 도난이 감지되었습니다.</p>`;
-        html += `<p>시간: ${new Date().toLocaleString()}</p><hr>`;
+        const item = data.missing_items[0];
 
-        data.missing_items.forEach(item => {
-            html += `
-                <p><strong>ID:</strong> ${item.id}</p>
-                <p><strong>이름:</strong> ${item.name}</p>
-                <p><strong>위치:</strong> ${item.location}</p>
-                <hr>
-            `;
-        });
+        // 🔥 1. 캡쳐 이미지
+        document.getElementById("capture_img").src = data.captured_image;
 
-        logBox.innerHTML = html;
+        // 🔥 2. DB 이미지
+        document.getElementById("db_img").src = item.image;
+
+        // 🔥 텍스트 업데이트
+        document.querySelector(".log-box").innerHTML = `
+            <p>🚨 도난 감지</p>
+            <p>ID: ${item.id}</p>
+            <p>이름: ${item.name}</p>
+            <p>위치: ${item.location}</p>
+            <p>시간: ${new Date().toLocaleString()}</p>
+        `;
 
     } else {
-        logBox.innerHTML = "<p>도난 정보 없음</p>";
+        document.querySelector(".log-box").innerHTML = "<p>도난 정보 없음</p>";
+    }
+}
+// 최초 실행
+loadAlert();
+function report() {// 🔥 log-box 내용 그대로 가져오기
+    const logBox = document.querySelector(".log-box");
+
+    if (!logBox) {
+        alert("로그 없음");
+        return;
+    }
+
+    // 🔥 텍스트만 추출 (HTML 태그 제거)
+    const message = logBox.innerText.trim();
+
+    if (confirm("경보 SMS를 전송하시겠습니까?")) {
+        fetch('/send_sms', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                to_number: '01081843638',
+                text: message
+            })
+        })
+        .then(r => r.json())
+        .then(d => alert(d.success ? "발송 성공" : "실패"));
     }
 }
 
-// 실행
-loadAlert();
 </script>
 
 </body>
